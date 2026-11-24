@@ -9,6 +9,8 @@
 ```csharp
 using WB.I18N.Avalonia;
 
+namespace MyApp.Localization;
+
 /// <summary>声明应用使用的语言资源。</summary>
 [I18NResource("MyApp.Resources.Language")]
 public static partial class I18N
@@ -18,12 +20,15 @@ public static partial class I18N
 
 ```csharp
 I18N.Current.LanguageTag = "fr-CA";
-string title = I18N.GetString("Title", "备用标题");
-string message = I18N.Format("TaskProgress", "A", 1234);
+string title = I18N.GetString(I18NKeys.ProductTeach);
+string message = I18N.Format(I18NKeys.TaskProgress, "A", 1234);
 ```
 
+把 `ProductTeach`、`TaskProgress` 等键加到默认资源 `Language.resx`。构建时会在 `I18N` 所在命名空间生成 `I18NKeys`，资源键可直接用于 C# 调用和 AXAML。
+
 ```xml
-<TextBlock Text="{I18N Key=Title}" />
+<!-- 在外层元素声明 xmlns:localization="using:MyApp.Localization"。 -->
+<TextBlock Text="{I18N Key={x:Static localization:I18NKeys.ProductTeach}}" />
 <TextBlock Text="{I18N Key={Binding StatusKey}}" />
 ```
 

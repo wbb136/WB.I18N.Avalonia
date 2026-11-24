@@ -17,6 +17,25 @@ public static partial class I18N
 
 生成的 C# 入口有 `I18N.GetString(key)`、`I18N.Format(key, args)` 和 `I18N.Current.LanguageTag`。从 2.2.0 起，可将 `LanguageTag` 设为 .NET 能识别的语言或地区标签，例如 `zh`、`en`、`fr`、`fr-CA` 或 `ja-JP`。默认值是 `zh`。设置时会去除首尾空白并规范标签大小写，空值和 .NET 无法识别的值会被忽略。
 
+构建时会根据中性 `.resx` 中的键生成与调用入口同命名空间的常量类。类名由声明类型的名字加上 `Keys` 组成，例如 `I18NKeys`。在 IDE 中键入 `I18NKeys.` 即可选键。
+
+```csharp
+string title = I18N.GetString(I18NKeys.ProductTeach);
+string progress = I18N.Format(I18NKeys.TaskProgress, "A", 1234);
+```
+
+包含特殊字符的键会转换为有效的 C# 标识符，同名时会生成可区分的成员名。常量值始终保留 `.resx` 中的原始键。新增语言时，在中性资源中先声明需要生成的键。
+
+中性 `.resx` 在其他项目时，可以把它作为 `AdditionalFiles` 加到声明 `I18N` 的项目。`WBI18NResourceBaseName` 填特性中对应的中性资源清单名，`WBI18NResourceAssembly` 填提供资源的程序集名称。
+
+```xml
+<ItemGroup>
+  <AdditionalFiles Include="..\SharedTexts\Resources\Language.resx"
+                   WBI18NResourceBaseName="SharedTexts.Resources.Language"
+                   WBI18NResourceAssembly="SharedTexts" />
+</ItemGroup>
+```
+
 在原资源文件旁添加对应语言的 `.resx`，例如 `Language.fr.resx` 或 `Language.fr-CA.resx`，即可提供新增译文。资源按具体语言、上级语言和默认 `.resx` 的顺序回退。`I18N.Format` 使用当前所选语言的数字和日期格式；设置 `LanguageTag` 仅改变本库的语言状态。
 
-Avalonia 界面使用 `{I18N Key=Greeting}` 或 `{I18N Key={Binding ResourceKey}}`。界面语言或已绑定的资源键发生变化时，文案会自动更新。
+在 AXAML 中将 `localization` 映射到 `I18N` 所在的命名空间，可以通过 `{I18N Key={x:Static localization:I18NKeys.ProductTeach}}` 引用生成的键。动态键可使用 `{I18N Key={Binding ResourceKey}}`。界面语言或已绑定的资源键发生变化时，文案会自动更新。

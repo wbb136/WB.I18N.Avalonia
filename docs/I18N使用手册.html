@@ -135,7 +135,7 @@
   <a class="skip" href="#start">跳到使用步骤</a>
   <header class="hero">
     <div class="wrap">
-      <p class="meta">.NET 8 · Avalonia 12.1 · WB.I18N.Avalonia 2.2.0</p>
+      <p class="meta">.NET 8 · Avalonia 12.1 · WB.I18N.Avalonia 2.3.0</p>
       <h1>WB.I18N.Avalonia 使用手册</h1>
       <p>在资源工程声明一次 <code>I18N</code>，在 C# 中取文案，在 AXAML 中绑定文案。切换语言时，已绑定的页面随当前语言更新。</p>
     </div>
@@ -155,7 +155,7 @@
     <section id="start" aria-labelledby="start-title">
       <h2 id="start-title">接入项目</h2>
       <h3>安装本地 NuGet 包</h3>
-      <p>把 <code>WB.I18N.Avalonia.2.2.0.nupkg</code> 放到解决方案的 <code>packages</code> 目录，并在解决方案根目录的 <code>NuGet.Config</code> 中加入本地源。项目已配置 <code>packageSourceMapping</code> 时，把 <code>WB.I18N.Avalonia</code> 映射到该源。</p>
+      <p>把 <code>WB.I18N.Avalonia.2.3.0.nupkg</code> 放到解决方案的 <code>packages</code> 目录，并在解决方案根目录的 <code>NuGet.Config</code> 中加入本地源。项目已配置 <code>packageSourceMapping</code> 时，把 <code>WB.I18N.Avalonia</code> 映射到该源。</p>
       <figure>
         <figcaption>NuGet.Config 中的包源</figcaption>
         <pre tabindex="0"><code>&lt;configuration&gt;
@@ -169,7 +169,7 @@
       <figure>
         <figcaption>项目文件中的包引用</figcaption>
         <pre tabindex="0"><code>&lt;ItemGroup&gt;
-  &lt;PackageReference Include="WB.I18N.Avalonia" Version="2.2.0" /&gt;
+  &lt;PackageReference Include="WB.I18N.Avalonia" Version="2.3.0" /&gt;
 &lt;/ItemGroup&gt;</code></pre>
       </figure>
       <h3>把分部类和资源放在同一个项目</h3>
@@ -186,7 +186,7 @@ public static partial class I18N
 {
 }</code></pre>
       </figure>
-      <p>构建时，源生成器补全 <code>GetString</code>、<code>Format</code> 和 <code>Current</code>。应用和业务模块引用资源项目即可使用。</p>
+      <p>构建时，源生成器补全 <code>GetString</code>、<code>Format</code> 和 <code>Current</code>，并从中性 <code>.resx</code> 生成同命名空间的 <code>I18NKeys</code> 常量类。应用和业务模块引用资源项目即可使用。</p>
       <div class="note"><p>分部类放在独立类库时，应用可在构建窗口前访问 <code>I18N.Current</code>，例如从设置恢复 <code>LanguageTag</code>，让资源类库在页面首次取值前加载。业务代码通过这一共享入口取值，普通 <code>.cs</code> 文件各自无需配一份 <code>.resx</code>。</p></div>
       <p>ServoWeld 采用字符串写法 <code>[I18NResource("LanguageAsset.Resources.Language")]</code>。<code>LanguageAsset</code> 中的语言文件以嵌入资源参与编译，直接提供默认资源的清单名即可。</p>
       <h3>已有强类型资源类时，可选用 <code>typeof</code></h3>
@@ -218,6 +218,15 @@ public static partial class I18N
 {
 }</code></pre>
       </figure>
+      <p>如果中性 <code>.resx</code> 位于另一个项目，可以将它列为声明 <code>I18N</code> 的项目的 <code>AdditionalFiles</code>，并指定资源清单名及程序集名称。</p>
+      <figure>
+        <figcaption>向生成器提供独立资源项目中的 .resx</figcaption>
+        <pre tabindex="0"><code>&lt;ItemGroup&gt;
+  &lt;AdditionalFiles Include="..\SharedTexts\Resources\Language.resx"
+                   WBI18NResourceBaseName="SharedTexts.Resources.Language"
+                   WBI18NResourceAssembly="SharedTexts" /&gt;
+&lt;/ItemGroup&gt;</code></pre>
+      </figure>
       <p>三种声明选一种即可。同一程序集只声明一个带 <code>I18NResource</code> 的分部类。包的 CLR 命名空间为 <code>WB.I18N.Avalonia</code>，调用方可以把分部类放在自己的命名空间。</p>
     </section>
 
@@ -235,20 +244,20 @@ public static partial class I18N
         </table>
       </div>
       <figure>
-        <figcaption>ServoWeld 后台使用现有资源键</figcaption>
+        <figcaption>ServoWeld 后台使用生成的资源键</figcaption>
         <pre tabindex="0"><code id="csharp-servoweld-example">using LanguageAsset;
 
 // 显示退出确认弹窗时，按当前语言读取标题和提示。
-string exitTitle = I18N.GetString("ConfirmExitTitle");
-string exitMessage = I18N.GetString("ConfirmExitMessage");
+string exitTitle = I18N.GetString(I18NKeys.ConfirmExitTitle);
+string exitMessage = I18N.GetString(I18NKeys.ConfirmExitMessage);
 
 // 动态菜单键可来自数据库。缺少译文时显示数据库中的名称。
-string menuKey = "HomePage";
+string menuKey = I18NKeys.HomePage;
 string databaseMenuName = "主页";
 string menuTitle = I18N.GetString(menuKey, fallback: databaseMenuName);
 
 // 导航失败时，将菜单名称填入资源中的 {0}。
-string navigationMessage = I18N.Format("NavigationErrorMessage", menuTitle);</code></pre>
+string navigationMessage = I18N.Format(I18NKeys.NavigationErrorMessage, menuTitle);</code></pre>
       </figure>
       <h3>准备示例文案和模板</h3>
       <p>在示例项目的两份语言文件中加入下面的键，供后台代码和 AXAML 示例共用。后续代码示例的注释以当前语言为英文时的输出为例。</p>
@@ -257,6 +266,7 @@ string navigationMessage = I18N.Format("NavigationErrorMessage", menuTitle);</co
           <thead><tr><th scope="col">键</th><th scope="col">Language.resx</th><th scope="col">Language.en.resx</th></tr></thead>
           <tbody>
             <tr><td><code>Title</code></td><td>设备状态</td><td>Device status</td></tr>
+            <tr><td><code>ProductTeach</code></td><td>产品示教</td><td>Product teaching</td></tr>
             <tr><td><code>StatusReady</code></td><td>已就绪</td><td>Ready</td></tr>
             <tr><td><code>StatusCompleted</code></td><td>已完成</td><td>Completed</td></tr>
             <tr><td><code>TaskProgress</code></td><td>任务 {0} 有 {1:N0} 条记录</td><td>Task {0} has {1:N0} records</td></tr>
@@ -265,13 +275,13 @@ string navigationMessage = I18N.Format("NavigationErrorMessage", menuTitle);</co
         </table>
       </div>
       <h3>按固定键或变量键取值</h3>
-      <p>键使用资源文件中的名称，例如 <code>Title</code>。查找顺序是当前语言、父级语言、默认资源、调用时传入的备用文案、键名。传入 <code>null</code>、空字符串或纯空白时，返回备用文案，未提供时返回空字符串。</p>
+      <p>已知资源键可以使用 <code>I18NKeys.ProductTeach</code> 等常量。包含特殊字符的键会转换为有效的 C# 标识符，同名时生成可区分的成员，常量值保留原始键。对于运行时取得的键，可以传入字符串变量。查找顺序是当前语言、父级语言、默认资源、调用时传入的备用文案、键名。传入 <code>null</code>、空字符串或纯空白时，返回备用文案，未提供时返回空字符串。</p>
       <figure>
         <figcaption>读取固定键、动态键和回退值</figcaption>
-        <pre tabindex="0"><code id="csharp-lookup-example">string title = I18N.GetString("Title");                          // Device status
-string statusKey = "StatusReady";
+        <pre tabindex="0"><code id="csharp-lookup-example">string title = I18N.GetString(I18NKeys.ProductTeach);          // Product teaching
+string statusKey = I18NKeys.StatusReady;
 string status = I18N.GetString(statusKey);                     // Ready
-string defaultText = I18N.GetString("DefaultLanguageOnly");    // 默认文案
+string defaultText = I18N.GetString(I18NKeys.DefaultLanguageOnly); // 默认文案
 string fallbackText = I18N.GetString("MissingKey", "备用文案"); // 备用文案
 string missingKeyText = I18N.GetString("MissingKey");           // MissingKey
 string emptyText = I18N.GetString(null);                       // 空字符串</code></pre>
@@ -282,11 +292,11 @@ string emptyText = I18N.GetString(null);                       // 空字符串</
         <figcaption>逐个传递参数，或传入现有的参数数组</figcaption>
         <pre tabindex="0"><code id="csharp-format-example">string taskName = "A";
 int itemCount = 1234;
-string progress = I18N.Format("TaskProgress", taskName, itemCount);
+string progress = I18N.Format(I18NKeys.TaskProgress, taskName, itemCount);
 // Task A has 1,234 records
 
 object?[] formatArguments = [taskName, itemCount];
-string progressFromArray = I18N.Format("TaskProgress", formatArguments);
+string progressFromArray = I18N.Format(I18NKeys.TaskProgress, formatArguments);
 // Task A has 1,234 records</code></pre>
       </figure>
       <p>省略参数或传入空数组时，<code>Format</code> 原样返回模板。传入参数后，模板语法错误或索引超出参数范围会抛出 <code>FormatException</code>。中英文资源中的占位符都应与调用方传参一致。</p>
@@ -305,21 +315,22 @@ string progressWithFallback = string.Format(culture, template, "A", 1234);
       <figure>
         <figcaption>同一个键随当前语言返回不同文案</figcaption>
         <pre tabindex="0"><code id="csharp-language-example">I18N.Current.LanguageTag = "zh";
-string chineseTitle = I18N.GetString("Title");  // 设备状态
+string chineseTitle = I18N.GetString(I18NKeys.Title);  // 设备状态
 
 I18N.Current.LanguageTag = "en";
-string englishTitle = I18N.GetString("Title");  // Device status</code></pre>
+string englishTitle = I18N.GetString(I18NKeys.Title);  // Device status</code></pre>
       </figure>
       <p>应用完全没有声明语言资源时，可以调用运行时的 <code>I18NExtension.GetString(key, fallback)</code> 取得备用文案、键名或空字符串。已引用资源项目的业务代码统一通过生成的 <code>I18N</code> 类调用。</p>
     </section>
 
     <section id="axaml" aria-labelledby="axaml-title">
       <h2 id="axaml-title">在 AXAML 中绑定</h2>
-      <h3>固定键直接写入 Key</h3>
+      <h3>通过 x:Static 使用固定键</h3>
       <p>页面使用 Avalonia 默认 XML 命名空间时可直接写 <code>{I18N ...}</code>。包通过 <code>XmlnsDefinition</code> 将 CLR 命名空间 <code>WB.I18N.Avalonia</code> 映射到 Avalonia 默认命名空间。需要显式前缀时，可声明 <code>xmlns:i18n="clr-namespace:WB.I18N.Avalonia;assembly=WB.I18N.Avalonia"</code>。 <a href="https://docs.avaloniaui.net/docs/xaml/namespaces">Avalonia XAML 命名空间</a></p>
       <figure>
         <figcaption>固定资源键与备用文案</figcaption>
-        <pre tabindex="0"><code>&lt;TextBlock Text="{I18N Key=Title}" /&gt;
+        <pre tabindex="0"><code>&lt;!-- 在外层元素声明 xmlns:localization="clr-namespace:Demo.Localization"。 --&gt;
+&lt;TextBlock Text="{I18N Key={x:Static localization:I18NKeys.ProductTeach}}" /&gt;
 &lt;TextBlock Text="{I18N Key=MissingKey, Fallback='备用文案'}" /&gt;</code></pre>
       </figure>
       <h3>给 Key 和格式化参数绑定数据</h3>
@@ -329,7 +340,7 @@ string englishTitle = I18N.GetString("Title");  // Device status</code></pre>
 
 &lt;TextBlock&gt;
   &lt;TextBlock.Text&gt;
-    &lt;I18N Key="TaskProgress"&gt;
+    &lt;I18N Key="{x:Static localization:I18NKeys.TaskProgress}"&gt;
       &lt;Binding Path="TaskName" /&gt;
       &lt;Binding Path="ItemCount" /&gt;
     &lt;/I18N&gt;
@@ -340,6 +351,7 @@ string englishTitle = I18N.GetString("Title");  // Device status</code></pre>
       <figure>
         <figcaption>C# 中修改绑定的键及参数</figcaption>
         <pre tabindex="0"><code>using System.ComponentModel;
+using Demo.Localization;
 
 /// &lt;summary&gt;为设备状态页提供资源键和任务数据。&lt;/summary&gt;
 public sealed class StatusViewModel : INotifyPropertyChanged
@@ -349,7 +361,7 @@ public sealed class StatusViewModel : INotifyPropertyChanged
     {
         get;
         private set;
-    } = "StatusReady";
+    } = I18NKeys.StatusReady;
 
     /// &lt;summary&gt;用于格式化的任务名称。&lt;/summary&gt;
     public string TaskName
@@ -371,7 +383,7 @@ public sealed class StatusViewModel : INotifyPropertyChanged
     /// &lt;summary&gt;记录任务完成状态并刷新页面。&lt;/summary&gt;
     public void Complete(string name, int count)
     {
-        StatusKey = "StatusCompleted";
+        StatusKey = I18NKeys.StatusCompleted;
         TaskName = name;
         ItemCount = count;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusKey)));

@@ -22,8 +22,9 @@ dotnet build samples/WB.I18N.Avalonia.Demo.AssemblyDeclaration/WB.I18N.Avalonia.
 ## 运行界面涵盖的用法
 
 - `Localization/I18N.cs` 使用 `[I18NResource("WB.I18N.Avalonia.Demo.Resources.Language")]` 声明同程序集资源。
-- `DemoViewModel` 使用生成的 `I18N.GetString`（含缺失键备用文案）、`I18N.Format` 和 `I18N.Current.LanguageTag`；语言变化时通知已绑定的 C# 查询结果刷新。
-- `MainWindow.axaml` 包含默认 XML 命名空间的 `{I18N ...}` 与显式 `xmlns:i18n` 的 `{i18n:I18N ...}` 写法、固定与动态 `Key`、固定与动态 `Fallback`、绑定的格式化参数，以及按钮触发的语言切换。
+- `DemoViewModel` 使用 `I18N.GetString(I18NKeys.ProductTeach)` 和 `I18N.Format(I18NKeys.TaskProgress, ...)`。状态切换也通过 `I18NKeys.StatusReady` 和 `I18NKeys.StatusCompleted` 提供动态键。语言变化时会通知已绑定的 C# 查询结果刷新。
+- `I18NKeys` 从 `Language.resx` 生成。特殊字符会映射为有效的 C# 标识符，同名时生成可区分的成员，常量内容保留原始资源键。语言或地区资源文件为现有键提供翻译。
+- `MainWindow.axaml` 把 `{x:Static localization:I18NKeys.ProductTeach}` 用作固定键，并展示动态 `Key`、固定与动态 `Fallback`、绑定的格式化参数以及语言切换。备用文案示例故意使用没有资源的键。
 - `Language.resx` 提供默认文案，`Language.fr.resx` 提供法语文案，`Language.fr-CA.resx` 仅覆盖部分键。选择加拿大法语时，`RegionalGreeting` 取地区译文，`ParentOnly` 回退到法语，`NeutralOnly` 回退到默认资源。`TaskProgress` 的模板也来自法语，但数字仍按 `fr-CA` 格式化。
 - `Language.en.resx` 展示独立的英文译文。
 
@@ -35,5 +36,7 @@ dotnet build samples/WB.I18N.Avalonia.Demo.AssemblyDeclaration/WB.I18N.Avalonia.
 | `WB.I18N.Avalonia.Demo.ExternalDeclaration` | `[I18NResource(typeof(ResourceAnchor), "WB.I18N.Avalonia.Demo.ResourcePack.Resources.Language")]` | `WB.I18N.Avalonia.Demo.ResourcePack` 中的资源 |
 
 两个类库都包含可由源生成器补全的 `I18N` 部分类。它们是独立的声明示例，运行中的桌面应用不引用它们，避免多个示例争用同一个进程的全局语言入口。
+
+`ExternalDeclaration` 将 `ResourcePack` 的中性 `.resx` 作为 `AdditionalFiles` 传给生成器，配置中包含 `WBI18NResourceBaseName` 和 `WBI18NResourceAssembly`。
 
 `WB.I18N.Avalonia.Demo.AssemblyDeclaration` 是旧式程序集级声明的独立控制台示例。它只在入口程序集上使用 `[assembly: I18NResource("...")]`，再调用 `I18NExtension.GetString`；由于没有带特性的分部类，源生成器不创建 `I18N` 包装入口。可通过 `dotnet run --project samples/WB.I18N.Avalonia.Demo.AssemblyDeclaration/WB.I18N.Avalonia.Demo.AssemblyDeclaration.csproj` 验证。

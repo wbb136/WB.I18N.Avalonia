@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
@@ -51,7 +52,16 @@ public sealed class I18NResourceGenerator : IIncrementalGenerator
         isEnabledByDefault: true
     );
 
-    /// <summary>注册类级资源特性和程序集级资源特性的增量读取规则。</summary>
+    private static readonly DiagnosticDescriptor InvalidKeySource = new(
+        "WBI18N005",
+        "无法读取本地化资源键",
+        "无法从“{0}”生成本地化资源键：{1}",
+        Category,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    /// <summary>注册资源声明以及用于生成键常量的默认资源文件。</summary>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var declarations = context.SyntaxProvider.ForAttributeWithMetadataName(
@@ -74,20 +84,36 @@ public sealed class I18NResourceGenerator : IIncrementalGenerator
             });
         });
 
+        var keySources = context.AdditionalTextsProvider
+            .Where(static file =>
+            {
+                return file.Path.EndsWith(".resx", StringComparison.OrdinalIgnoreCase);
+            })
+            .Combine(context.AnalyzerConfigOptionsProvider)
+            .Select(static (input, cancellationToken) =>
+            {
+                return ResourceKeySource.Read(input.Left, input.Right.GetOptions(input.Left), cancellationToken);
+            })
+            .Where(static source =>
+            {
+                return source is not null;
+            });
+
         context.RegisterSourceOutput(
-            declarations.Collect().Combine(assemblyRegistration),
+            declarations.Collect().Combine(assemblyRegistration).Combine(keySources.Collect()),
             static (productionContext, input) =>
             {
-                Generate(productionContext, input.Left, input.Right);
+                Generate(productionContext, input.Left.Left, input.Left.Right, input.Right);
             }
         );
     }
 
-    /// <summary>检查声明并生成调用入口，保留兼容的现有程序集标记。</summary>
+    /// <summary>检查资源声明并生成调用入口和键常量，保留已有的兼容程序集标记。</summary>
     private static void Generate(
         SourceProductionContext context,
         ImmutableArray<GeneratorAttributeSyntaxContext> declarations,
-        AttributeData? assemblyRegistration
+        AttributeData? assemblyRegistration,
+        ImmutableArray<ResourceKeySource?> keySources
     )
     {
         if (declarations.IsDefaultOrEmpty)
@@ -116,7 +142,8 @@ public sealed class I18NResourceGenerator : IIncrementalGenerator
             return;
         }
 
-        string? classArguments = GetRegistrationArguments(resource.Attributes[0]);
+        AttributeData classRegistration = resource.Attributes[0];
+        string? classArguments = GetRegistrationArguments(classRegistration);
         if (classArguments is null)
         {
             context.ReportDiagnostic(Diagnostic.Create(InvalidRegistration, location));
@@ -133,6 +160,72 @@ public sealed class I18NResourceGenerator : IIncrementalGenerator
             ? $"[assembly: global::WB.I18N.Avalonia.I18NResourceAttribute({classArguments})]"
             : string.Empty;
         context.AddSource("I18N.g.cs", SourceText.From(CreateSource(target, registration), Encoding.UTF8));
+        GenerateKeys(context, target, classRegistration, keySources, location);
+    }
+
+    /// <summary>仅为声明指向的默认资源生成键，避免混入同应用中的其他资源或卫星程序集文案。</summary>
+    private static void GenerateKeys(
+        SourceProductionContext context,
+        INamedTypeSymbol target,
+        AttributeData registration,
+        ImmutableArray<ResourceKeySource?> keySources,
+        Location location
+    )
+    {
+        ImmutableArray<TypedConstant> arguments = registration.ConstructorArguments;
+        var resourceType = arguments[0].Value as INamedTypeSymbol;
+        string? baseName = arguments.Length == 2
+            ? arguments[1].Value as string
+            : arguments[0].Value as string ?? GetResourceTypeName(resourceType);
+        string assemblyName = (resourceType?.ContainingAssembly ?? target.ContainingAssembly).Name;
+
+        var keys = ImmutableArray.CreateBuilder<string>();
+        foreach (ResourceKeySource? source in keySources)
+        {
+            if (source is null ||
+                !string.Equals(source.BaseName, baseName, StringComparison.Ordinal) ||
+                (source.AssemblyName is not null &&
+                    !string.Equals(source.AssemblyName, assemblyName, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            if (source.Error is not null)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(InvalidKeySource, location, source.Path, source.Error));
+                return;
+            }
+
+            keys.AddRange(source.Keys);
+        }
+
+        if (keys.Count == 0)
+        {
+            return;
+        }
+
+        string name = target.Name + "Keys";
+        string accessibility = target.DeclaredAccessibility == Accessibility.Public ? "public" : "internal";
+        string sourceText = ResourceKeyEmitter.CreateSource(name, accessibility, GetNamespaceDeclaration(target), keys);
+        context.AddSource("I18NKeys.g.cs", SourceText.From(sourceText, Encoding.UTF8));
+    }
+
+    /// <summary>获取资源类型用于定位资源清单的名称，嵌套类型使用运行时的加号分隔符。</summary>
+    private static string? GetResourceTypeName(INamedTypeSymbol? type)
+    {
+        if (type is null || type.IsGenericType)
+        {
+            return null;
+        }
+
+        if (type.ContainingType is not null)
+        {
+            return GetResourceTypeName(type.ContainingType) + "+" + type.MetadataName;
+        }
+
+        return type.ContainingNamespace.IsGlobalNamespace
+            ? type.MetadataName
+            : type.ContainingNamespace.ToDisplayString() + "." + type.MetadataName;
     }
 
     /// <summary>把经编译器解析的特性参数还原为有效的程序集声明参数。</summary>
@@ -167,13 +260,7 @@ public sealed class I18NResourceGenerator : IIncrementalGenerator
     /// <summary>生成和调用方类型匹配的分部声明，并转发到唯一的本地化入口。</summary>
     private static string CreateSource(INamedTypeSymbol target, string registration)
     {
-        string namespaceDeclaration = target.ContainingNamespace.IsGlobalNamespace
-            ? string.Empty
-            : "namespace " + target.ContainingNamespace.ToDisplayString(
-                SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(
-                    SymbolDisplayGlobalNamespaceStyle.Omitted
-                )
-            ) + ";";
+        string namespaceDeclaration = GetNamespaceDeclaration(target);
         string name = target.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
         string accessibility = target.DeclaredAccessibility == Accessibility.Public ? "public" : "internal";
 
@@ -216,5 +303,17 @@ public sealed class I18NResourceGenerator : IIncrementalGenerator
                 }
             }
             """;
+    }
+
+    /// <summary>生成供调用入口和键常量类型共用的命名空间声明。</summary>
+    private static string GetNamespaceDeclaration(INamedTypeSymbol target)
+    {
+        return target.ContainingNamespace.IsGlobalNamespace
+            ? string.Empty
+            : "namespace " + target.ContainingNamespace.ToDisplayString(
+                SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(
+                    SymbolDisplayGlobalNamespaceStyle.Omitted
+                )
+            ) + ";";
     }
 }

@@ -1,0 +1,22 @@
+<Project>
+  <ItemGroup>
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="WBI18NResourceBaseName" />
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="WBI18NResourceAssembly" />
+  </ItemGroup>
+
+  <!-- 使用 SDK 已计算的资源名和区域性，让生成器读取与运行时同一份中性资源。 -->
+  <Target Name="WBI18NCollectResourceFiles"
+          BeforeTargets="GenerateMSBuildEditorConfigFileCore"
+          DependsOnTargets="PrepareResourceNames"
+          Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <ItemGroup>
+      <_WBI18NResourceFiles Include="@(EmbeddedResource->'%(FullPath)')"
+                           Condition="'%(EmbeddedResource.Extension)' == '.resx' and '%(EmbeddedResource.WithCulture)' == 'false'">
+        <WBI18NResourceBaseName Condition="'%(EmbeddedResource.LogicalName)' == ''">%(EmbeddedResource.ManifestResourceName)</WBI18NResourceBaseName>
+        <WBI18NResourceBaseName Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(EmbeddedResource.LogicalName)', '(?i)\.resources$'))">$([System.Text.RegularExpressions.Regex]::Replace('%(EmbeddedResource.LogicalName)', '(?i)\.resources$', ''))</WBI18NResourceBaseName>
+        <WBI18NResourceAssembly>$(AssemblyName)</WBI18NResourceAssembly>
+      </_WBI18NResourceFiles>
+      <AdditionalFiles Include="@(_WBI18NResourceFiles)" Exclude="@(AdditionalFiles->'%(FullPath)')" />
+    </ItemGroup>
+  </Target>
+</Project>

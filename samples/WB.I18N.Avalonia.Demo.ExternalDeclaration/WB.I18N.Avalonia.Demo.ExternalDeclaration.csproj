@@ -10,5 +10,10 @@
     <ProjectReference Include="$(I18NProjectRoot)\WB.I18N.Generator\WB.I18N.Generator.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\WB.I18N.Avalonia.Demo.ResourcePack\WB.I18N.Avalonia.Demo.ResourcePack.csproj" />
+    <!-- 外部 resx 只参与生成资源键，资源仍由资源程序集嵌入。 -->
+    <AdditionalFiles Include="..\WB.I18N.Avalonia.Demo.ResourcePack\Resources\Language.resx"
+                     WBI18NResourceBaseName="WB.I18N.Avalonia.Demo.ResourcePack.Resources.Language"
+                     WBI18NResourceAssembly="WB.I18N.Avalonia.Demo.ResourcePack" />
   </ItemGroup>
+  <Import Project="$(I18NProjectRoot)\WB.I18N.Avalonia\buildTransitive\WB.I18N.Avalonia.targets" />
 </Project>

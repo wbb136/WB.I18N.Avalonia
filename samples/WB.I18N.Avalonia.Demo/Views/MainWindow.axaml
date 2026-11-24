@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:i18n="clr-namespace:WB.I18N.Avalonia;assembly=WB.I18N.Avalonia"
+        xmlns:localization="clr-namespace:WB.I18N.Avalonia.Demo.Localization"
         xmlns:viewModels="clr-namespace:WB.I18N.Avalonia.Demo.ViewModels"
         x:Class="WB.I18N.Avalonia.Demo.Views.MainWindow"
         x:DataType="viewModels:DemoViewModel"
@@ -25,8 +26,8 @@
 
             <Separator />
             <TextBlock Text="AXAML：固定键与备用文案" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="{I18N Key=Title}" />
-            <TextBlock Text="{i18n:I18N Key=Title}" />
+            <TextBlock Text="{I18N Key={x:Static localization:I18NKeys.Title}}" />
+            <TextBlock Text="{i18n:I18N Key={x:Static localization:I18NKeys.ProductTeach}}" />
             <TextBlock Text="{I18N Key=MissingFixed, Fallback='固定备用文案'}" />
 
             <Separator />
@@ -42,7 +43,7 @@
             <TextBlock Text="AXAML：绑定格式化参数" FontSize="18" FontWeight="SemiBold" />
             <TextBlock>
                 <TextBlock.Text>
-                    <I18N Key="TaskProgress">
+                    <I18N Key="{x:Static localization:I18NKeys.TaskProgress}">
                         <Binding Path="TaskName" />
                         <Binding Path="ItemCount" />
                     </I18N>
@@ -52,12 +53,13 @@
 
             <Separator />
             <TextBlock Text="fr-CA 回退：地区译文 / 父级语言 / 默认资源" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="{I18N Key=RegionalGreeting}" />
-            <TextBlock Text="{I18N Key=ParentOnly}" />
-            <TextBlock Text="{I18N Key=NeutralOnly}" />
+            <TextBlock Text="{I18N Key={x:Static localization:I18NKeys.RegionalGreeting}}" />
+            <TextBlock Text="{I18N Key={x:Static localization:I18NKeys.ParentOnly}}" />
+            <TextBlock Text="{I18N Key={x:Static localization:I18NKeys.NeutralOnly}}" />
 
             <Separator />
-            <TextBlock Text="C#：GetString、Format 与 Current.LanguageTag" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="C#：生成的资源键、格式化与语言切换" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="I18N.GetString(I18NKeys.ProductTeach)" />
             <TextBlock Text="{Binding CodeLookup}" />
             <TextBlock Text="{Binding CodeFallback}" />
             <TextBlock Text="{Binding CodeFormat}" />

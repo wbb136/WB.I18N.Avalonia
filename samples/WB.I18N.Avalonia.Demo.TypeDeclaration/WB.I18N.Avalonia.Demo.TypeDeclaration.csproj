@@ -10,4 +10,5 @@
     <ProjectReference Include="$(I18NProjectRoot)\WB.I18N.Generator\WB.I18N.Generator.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  <Import Project="$(I18NProjectRoot)\WB.I18N.Avalonia\buildTransitive\WB.I18N.Avalonia.targets" />
 </Project>

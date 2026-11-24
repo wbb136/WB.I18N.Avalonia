@@ -1,12 +1,13 @@
 using System.ComponentModel;
 using DemoI18N = WB.I18N.Avalonia.Demo.Localization.I18N;
+using WB.I18N.Avalonia.Demo.Localization;
 
 namespace WB.I18N.Avalonia.Demo.ViewModels;
 
 /// <summary>提供动态资源键、备用文案、格式化参数和 C# 查询示例。</summary>
 public sealed class DemoViewModel : INotifyPropertyChanged, IDisposable
 {
-    private string _statusKey = "StatusReady";
+    private string _statusKey = I18NKeys.StatusReady;
     private string _missingFallback = "动态备用文案";
     private string _taskName = "A";
     private int _itemCount = 1234;
@@ -73,12 +74,12 @@ public sealed class DemoViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    /// <summary>演示在 C# 中使用 GetString 查询资源。</summary>
+    /// <summary>演示在 C# 中通过生成的资源键查询产品示教文案。</summary>
     public string CodeLookup
     {
         get
         {
-            return DemoI18N.GetString("Title");
+            return DemoI18N.GetString(I18NKeys.ProductTeach);
         }
     }
 
@@ -96,7 +97,7 @@ public sealed class DemoViewModel : INotifyPropertyChanged, IDisposable
     {
         get
         {
-            return DemoI18N.Format("TaskProgress", _taskName, _itemCount);
+            return DemoI18N.Format(I18NKeys.TaskProgress, _taskName, _itemCount);
         }
     }
 
@@ -116,7 +117,7 @@ public sealed class DemoViewModel : INotifyPropertyChanged, IDisposable
     /// <summary>在准备与完成两个资源键之间切换。</summary>
     public void ToggleStatus()
     {
-        _statusKey = _statusKey == "StatusReady" ? "StatusCompleted" : "StatusReady";
+        _statusKey = _statusKey == I18NKeys.StatusReady ? I18NKeys.StatusCompleted : I18NKeys.StatusReady;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusKey)));
     }
 
