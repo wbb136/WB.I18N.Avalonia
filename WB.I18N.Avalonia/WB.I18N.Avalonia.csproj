@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>2.2.0</Version>
+    <IsPackable>true</IsPackable>
+    <Description>Reactive Avalonia localization with a resource declaration and a generated C# entry point.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <ProjectReference Include="..\WB.I18N.Generator\WB.I18N.Generator.csproj"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+    <!-- 源生成器随运行时一起交付，由调用方编译时加载。 -->
+    <None Include="..\WB.I18N.Generator\bin\$(Configuration)\netstandard2.0\WB.I18N.Generator.dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/cs"
+          Visible="false" />
+    <None Update="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>

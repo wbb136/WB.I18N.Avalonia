@@ -1,0 +1,9 @@
+.vs/
+**/bin/
+**/obj/
+AvaloniaUI/
+TestResults/
+*.user
+*.suo
+*.nupkg
+*.snupkg

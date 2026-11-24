@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <I18NProjectRoot Condition="'$(I18NProjectRoot)' == ''">..\..</I18NProjectRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(I18NProjectRoot)\WB.I18N.Avalonia\WB.I18N.Avalonia.csproj" />
+    <ProjectReference Include="$(I18NProjectRoot)\WB.I18N.Generator\WB.I18N.Generator.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\WB.I18N.Avalonia.Demo.ResourcePack\WB.I18N.Avalonia.Demo.ResourcePack.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <I18NProjectRoot Condition="'$(I18NProjectRoot)' == ''">..\..</I18NProjectRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(I18NProjectRoot)\WB.I18N.Avalonia\WB.I18N.Avalonia.csproj" />
+  </ItemGroup>
+</Project>

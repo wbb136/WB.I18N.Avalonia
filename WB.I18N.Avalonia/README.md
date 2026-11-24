@@ -1,0 +1,22 @@
+# WB.I18N.Avalonia
+
+在声明语言资源的 .NET 8 项目里安装 `WB.I18N.Avalonia`，加入一个静态分部类声明资源位置。分部类和资源放在同一程序集时，特性只需资源名。
+
+```csharp
+using WB.I18N.Avalonia;
+
+[I18NResource("MyApp.Resources.Language")]
+public static partial class I18N
+{
+}
+```
+
+调用方可以自行选择声明方式。只有 `.resx` 时，直接传资源名即可。从 2.1.0 起，已有 `Language.Designer.cs` 等强类型资源类时，也可以使用 `[I18NResource(typeof(MyApp.Resources.Language))]`。该类的全名应与默认 `.resx` 的清单名一致，省略 `.resources` 后缀。类型可来自当前项目或引用的资源项目。
+
+资源类型与默认资源的名称不同时，可显式指定资源名，例如 `[I18NResource(typeof(SharedTexts.ResourceAnchor), "SharedTexts.Resources.Language")]`。`ResourceAnchor` 可使用该类库中已有的类型。分部类放在类库时，应用引用该类库并在初始化时通过 `I18N.Current` 使用共享语言状态。
+
+生成的 C# 入口有 `I18N.GetString(key)`、`I18N.Format(key, args)` 和 `I18N.Current.LanguageTag`。从 2.2.0 起，可将 `LanguageTag` 设为 .NET 能识别的语言或地区标签，例如 `zh`、`en`、`fr`、`fr-CA` 或 `ja-JP`。默认值是 `zh`。设置时会去除首尾空白并规范标签大小写，空值和 .NET 无法识别的值会被忽略。
+
+在原资源文件旁添加对应语言的 `.resx`，例如 `Language.fr.resx` 或 `Language.fr-CA.resx`，即可提供新增译文。资源按具体语言、上级语言和默认 `.resx` 的顺序回退。`I18N.Format` 使用当前所选语言的数字和日期格式；设置 `LanguageTag` 仅改变本库的语言状态。
+
+Avalonia 界面使用 `{I18N Key=Greeting}` 或 `{I18N Key={Binding ResourceKey}}`。界面语言或已绑定的资源键发生变化时，文案会自动更新。

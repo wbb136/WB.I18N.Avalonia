@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="WB.I18N.Avalonia 本地安装、资源声明、动态绑定与发布手册">
+  <title>WB.I18N.Avalonia 使用手册</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172d35;
+      --muted: #43606a;
+      --paper: #f4f8f7;
+      --surface: #ffffff;
+      --accent: #09614e;
+      --line: #cbded8;
+      --soft: #eaf5f0;
+      --code: #172e35;
+      --code-ink: #f0f9f6;
+      --sans: Inter, "Microsoft YaHei UI", "Noto Sans CJK SC", sans-serif;
+      --mono: Consolas, "Cascadia Mono", "Noto Sans Mono CJK SC", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 16px/1.75 var(--sans);
+    }
+    a { color: var(--accent); text-underline-offset: .2em; }
+    a:focus-visible { outline: 3px solid #c58225; outline-offset: 3px; }
+    .skip {
+      position: absolute;
+      top: -5rem;
+      left: 1rem;
+      z-index: 2;
+      background: var(--surface);
+      padding: .35rem .65rem;
+    }
+    .skip:focus { top: 1rem; }
+    .hero { background: #123840; color: #f6fcfa; }
+    .wrap { width: min(64rem, calc(100% - 3rem)); margin-inline: auto; }
+    .hero .wrap { padding-block: clamp(2rem, 6vw, 4rem); }
+    .hero p { max-width: 54rem; color: #d7eae5; margin: .55rem 0 0; }
+    .hero .meta { color: #9fe2cb; font-size: .88rem; font-weight: 700; }
+    h1, h2, h3 { line-height: 1.28; }
+    h1 { font-size: clamp(2rem, 5vw, 3.45rem); letter-spacing: -.022em; margin: .55rem 0 .75rem; }
+    h2 { font-size: clamp(1.45rem, 3vw, 1.9rem); margin: 0 0 1rem; }
+    h3 { font-size: 1.12rem; margin: 1.7rem 0 .45rem; }
+    p { margin: .55rem 0 1rem; }
+    nav {
+      margin-top: -1px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+    nav .wrap { display: flex; flex-wrap: wrap; gap: .4rem 1.6rem; padding-block: .8rem; }
+    nav a { font-weight: 650; text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    main { padding-block: .55rem 3rem; }
+    section {
+      padding-block: 2.05rem;
+      border-bottom: 1px solid var(--line);
+      scroll-margin-top: 1.5rem;
+    }
+    section:last-child { border-bottom: 0; }
+    section > :last-child { margin-bottom: 0; }
+    .note {
+      padding: .8rem 1rem;
+      border-left: 4px solid var(--accent);
+      background: var(--soft);
+      margin-block: 1.15rem;
+    }
+    .note p { margin: 0; }
+    code { font-family: var(--mono); }
+    :not(pre) > code {
+      padding: .05rem .24rem;
+      background: var(--soft);
+      border-radius: .2rem;
+      font-size: .92em;
+      overflow-wrap: anywhere;
+    }
+    .hero code {
+      color: #f6fcfa;
+      background: #26545a;
+    }
+    figure { margin: 1rem 0 1.15rem; }
+    figcaption { color: var(--muted); font-size: .9rem; font-weight: 650; margin-bottom: .3rem; }
+    pre {
+      background: var(--code);
+      color: var(--code-ink);
+      border: 1px solid transparent;
+      border-radius: .5rem;
+      padding: 1rem 1.15rem;
+      overflow-x: auto;
+      margin: 0;
+      font: .9rem/1.6 var(--mono);
+      tab-size: 4;
+    }
+    pre:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    ul, ol { margin: .5rem 0 1rem; padding-left: 1.6rem; }
+    li + li { margin-top: .35rem; }
+    .table-wrap { overflow-x: auto; margin-block: .8rem 1.15rem; }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); }
+    th, td { text-align: left; vertical-align: top; padding: .65rem .85rem; border: 1px solid var(--line); }
+    th { background: var(--soft); }
+    footer { border-top: 1px solid var(--line); padding: 1rem 0 1.5rem; color: var(--muted); font-size: .9rem; }
+    footer p { margin: 0; }
+    @media (max-width: 36rem) {
+      .wrap { width: calc(100% - 2rem); }
+      th, td, pre { padding: .65rem; }
+      nav .wrap { gap: .3rem 1rem; }
+    }
+    @media print {
+      :root { --ink: #1a2528; --muted: #344a4f; --soft: #f3f7f5; }
+      body, .hero { background: #fff; color: var(--ink); }
+      .hero .wrap { padding-block: .3rem 1rem; }
+      .hero p, .hero .meta { color: var(--muted); }
+      .hero code {
+        color: var(--ink);
+        background: var(--soft);
+      }
+      .wrap { width: 100%; }
+      .skip, nav { display: none; }
+      main { padding: 0; }
+      section { padding-block: 1.05rem; }
+      h1, h2, h3, figcaption { break-after: avoid; }
+      pre { background: #f6f8f7; color: var(--ink); border-color: #cbd6d3; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .table-wrap { overflow: visible; }
+      tr { break-inside: avoid; }
+      footer { margin-top: .8rem; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#start">跳到使用步骤</a>
+  <header class="hero">
+    <div class="wrap">
+      <p class="meta">.NET 8 · Avalonia 12.1 · WB.I18N.Avalonia 2.2.0</p>
+      <h1>WB.I18N.Avalonia 使用手册</h1>
+      <p>在资源工程声明一次 <code>I18N</code>，在 C# 中取文案，在 AXAML 中绑定文案。切换语言时，已绑定的页面随当前语言更新。</p>
+    </div>
+  </header>
+  <nav aria-label="手册目录">
+    <div class="wrap">
+      <a href="#start">接入</a>
+      <a href="#csharp">C# 后台</a>
+      <a href="#axaml">AXAML 绑定</a>
+      <a href="#cultures">新增语言</a>
+      <a href="#shipping">发布</a>
+      <a href="#troubleshooting">排查</a>
+      <a href="#verification">测试</a>
+    </div>
+  </nav>
+  <main class="wrap">
+    <section id="start" aria-labelledby="start-title">
+      <h2 id="start-title">接入项目</h2>
+      <h3>安装本地 NuGet 包</h3>
+      <p>把 <code>WB.I18N.Avalonia.2.2.0.nupkg</code> 放到解决方案的 <code>packages</code> 目录，并在解决方案根目录的 <code>NuGet.Config</code> 中加入本地源。项目已配置 <code>packageSourceMapping</code> 时，把 <code>WB.I18N.Avalonia</code> 映射到该源。</p>
+      <figure>
+        <figcaption>NuGet.Config 中的包源</figcaption>
+        <pre tabindex="0"><code>&lt;configuration&gt;
+  &lt;packageSources&gt;
+    &lt;add key="WBB Local" value="./packages" /&gt;
+    &lt;add key="nuget.org" value="https://api.nuget.org/v3/index.json" /&gt;
+  &lt;/packageSources&gt;
+&lt;/configuration&gt;</code></pre>
+      </figure>
+      <p>在声明 <code>partial class I18N</code> 的项目里添加引用。离线还原时，Avalonia 及它的依赖需已在 NuGet 缓存内，或可从本地源取得。 <a href="https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-package-add">.NET CLI 包引用说明</a></p>
+      <figure>
+        <figcaption>项目文件中的包引用</figcaption>
+        <pre tabindex="0"><code>&lt;ItemGroup&gt;
+  &lt;PackageReference Include="WB.I18N.Avalonia" Version="2.2.0" /&gt;
+&lt;/ItemGroup&gt;</code></pre>
+      </figure>
+      <h3>把分部类和资源放在同一个项目</h3>
+      <p>假设资源项目的根命名空间是 <code>Demo.Localization</code>，添加 <code>Resources/Language.resx</code> 和 <code>Resources/Language.en.resx</code>。前者存默认中文，后者存英文，两份文件共用键名。将生成操作设为「嵌入的资源」，特性填写默认资源的清单名称，省略后缀。</p>
+      <figure>
+        <figcaption>资源项目中的 I18N.cs</figcaption>
+        <pre tabindex="0"><code>using WB.I18N.Avalonia;
+
+namespace Demo.Localization;
+
+/// &lt;summary&gt;声明应用共享的中英文资源。&lt;/summary&gt;
+[I18NResource("Demo.Localization.Resources.Language")]
+public static partial class I18N
+{
+}</code></pre>
+      </figure>
+      <p>构建时，源生成器补全 <code>GetString</code>、<code>Format</code> 和 <code>Current</code>。应用和业务模块引用资源项目即可使用。</p>
+      <div class="note"><p>分部类放在独立类库时，应用可在构建窗口前访问 <code>I18N.Current</code>，例如从设置恢复 <code>LanguageTag</code>，让资源类库在页面首次取值前加载。业务代码通过这一共享入口取值，普通 <code>.cs</code> 文件各自无需配一份 <code>.resx</code>。</p></div>
+      <p>ServoWeld 采用字符串写法 <code>[I18NResource("LanguageAsset.Resources.Language")]</code>。<code>LanguageAsset</code> 中的语言文件以嵌入资源参与编译，直接提供默认资源的清单名即可。</p>
+      <h3>已有强类型资源类时，可选用 <code>typeof</code></h3>
+      <p>从 2.1.0 起，如果 <code>Language.resx</code> 已配有 <code>Language.Designer.cs</code> 等强类型资源类，可以传入这个类型。包用类型所在的程序集及类型全名查找中性资源。例如 <code>Demo.Localization.Resources.Language</code> 对应 <code>Demo.Localization.Resources.Language.resources</code>。</p>
+      <figure>
+        <figcaption>使用项目已有的 Language 资源类</figcaption>
+        <pre tabindex="0"><code>using WB.I18N.Avalonia;
+
+namespace Demo.Localization;
+
+/// &lt;summary&gt;用已有的强类型资源类声明语言资源。&lt;/summary&gt;
+[I18NResource(typeof(Demo.Localization.Resources.Language))]
+public static partial class I18N
+{
+}</code></pre>
+      </figure>
+      <p>调用方可以自行选择。只有 <code>.resx</code> 时，使用字符串即可，资源文件的「自定义工具」可以留空。已有资源类时也可以选择字符串。类型在另一程序集时，该类型需要对声明 <code>I18N</code> 的项目可见。</p>
+      <h3>分部类和资源位于不同程序集</h3>
+      <p>已有类型的全名与资源名不同时，使用 <code>typeof(类型)</code> 指定程序集，再传入完整的资源名。以下示例的资源位于 <code>SharedTexts</code>，清单名应与该项目的根命名空间及资源路径对应。</p>
+      <figure>
+        <figcaption>定位独立资源程序集的 I18N.cs</figcaption>
+        <pre tabindex="0"><code>using WB.I18N.Avalonia;
+
+namespace Demo.Localization;
+
+/// &lt;summary&gt;读取 SharedTexts 类库里的应用语言资源。&lt;/summary&gt;
+[I18NResource(typeof(SharedTexts.ResourceAnchor), "SharedTexts.Resources.Language")]
+public static partial class I18N
+{
+}</code></pre>
+      </figure>
+      <p>三种声明选一种即可。同一程序集只声明一个带 <code>I18NResource</code> 的分部类。包的 CLR 命名空间为 <code>WB.I18N.Avalonia</code>，调用方可以把分部类放在自己的命名空间。</p>
+    </section>
+
+    <section id="csharp" aria-labelledby="csharp-title">
+      <h2 id="csharp-title">C# 后台取值与格式化</h2>
+      <p>ViewModel、服务和窗口后台代码先引用声明 <code>I18N</code> 的资源项目，再导入该类的命名空间。ServoWeld 使用 <code>using LanguageAsset;</code>，本手册的新项目示例使用 <code>using Demo.Localization;</code>。这些入口由源生成器提供。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">调用</th><th scope="col">用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>I18N.GetString(string? resourceKey, string? fallback = null)</code></td><td>用固定键或变量键读取当前语言的文案，可传备用文案。</td></tr>
+            <tr><td><code>I18N.Format(string resourceKey, params object?[]? arguments)</code></td><td>用资源里的模板格式化参数，返回字符串。</td></tr>
+            <tr><td><code>I18N.Current.LanguageTag</code></td><td>读取或切换应用语言，接受 .NET 支持的区域性名称，例如 <code>zh</code>、<code>ja</code>、<code>fr-CA</code>。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figure>
+        <figcaption>ServoWeld 后台使用现有资源键</figcaption>
+        <pre tabindex="0"><code id="csharp-servoweld-example">using LanguageAsset;
+
+// 显示退出确认弹窗时，按当前语言读取标题和提示。
+string exitTitle = I18N.GetString("ConfirmExitTitle");
+string exitMessage = I18N.GetString("ConfirmExitMessage");
+
+// 动态菜单键可来自数据库。缺少译文时显示数据库中的名称。
+string menuKey = "HomePage";
+string databaseMenuName = "主页";
+string menuTitle = I18N.GetString(menuKey, fallback: databaseMenuName);
+
+// 导航失败时，将菜单名称填入资源中的 {0}。
+string navigationMessage = I18N.Format("NavigationErrorMessage", menuTitle);</code></pre>
+      </figure>
+      <h3>准备示例文案和模板</h3>
+      <p>在示例项目的两份语言文件中加入下面的键，供后台代码和 AXAML 示例共用。后续代码示例的注释以当前语言为英文时的输出为例。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">键</th><th scope="col">Language.resx</th><th scope="col">Language.en.resx</th></tr></thead>
+          <tbody>
+            <tr><td><code>Title</code></td><td>设备状态</td><td>Device status</td></tr>
+            <tr><td><code>StatusReady</code></td><td>已就绪</td><td>Ready</td></tr>
+            <tr><td><code>StatusCompleted</code></td><td>已完成</td><td>Completed</td></tr>
+            <tr><td><code>TaskProgress</code></td><td>任务 {0} 有 {1:N0} 条记录</td><td>Task {0} has {1:N0} records</td></tr>
+            <tr><td><code>DefaultLanguageOnly</code></td><td>默认文案</td><td>省略此条资源</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>按固定键或变量键取值</h3>
+      <p>键使用资源文件中的名称，例如 <code>Title</code>。查找顺序是当前语言、父级语言、默认资源、调用时传入的备用文案、键名。传入 <code>null</code>、空字符串或纯空白时，返回备用文案，未提供时返回空字符串。</p>
+      <figure>
+        <figcaption>读取固定键、动态键和回退值</figcaption>
+        <pre tabindex="0"><code id="csharp-lookup-example">string title = I18N.GetString("Title");                          // Device status
+string statusKey = "StatusReady";
+string status = I18N.GetString(statusKey);                     // Ready
+string defaultText = I18N.GetString("DefaultLanguageOnly");    // 默认文案
+string fallbackText = I18N.GetString("MissingKey", "备用文案"); // 备用文案
+string missingKeyText = I18N.GetString("MissingKey");           // MissingKey
+string emptyText = I18N.GetString(null);                       // 空字符串</code></pre>
+      </figure>
+      <h3>按语言模板格式化参数</h3>
+      <p><code>{0}</code> 对应第一个参数，<code>{1:N0}</code> 对应第二个参数，并以当前语言的数字规则保留零位小数。数字和日期可以直接传值，例如 <code>int</code>、<code>decimal</code> 和 <code>DateTime</code>。即使模板来自父级语言或默认资源，参数仍按 <code>LanguageTag</code> 指定的区域性格式化。修改此属性也不会改变当前线程的区域性。译文可以按语序调整占位符位置，参数索引保留原含义。要在模板里显示字面大括号，可写 <code>{{</code> 和 <code>}}</code>。</p>
+      <figure>
+        <figcaption>逐个传递参数，或传入现有的参数数组</figcaption>
+        <pre tabindex="0"><code id="csharp-format-example">string taskName = "A";
+int itemCount = 1234;
+string progress = I18N.Format("TaskProgress", taskName, itemCount);
+// Task A has 1,234 records
+
+object?[] formatArguments = [taskName, itemCount];
+string progressFromArray = I18N.Format("TaskProgress", formatArguments);
+// Task A has 1,234 records</code></pre>
+      </figure>
+      <p>省略参数或传入空数组时，<code>Format</code> 原样返回模板。传入参数后，模板语法错误或索引超出参数范围会抛出 <code>FormatException</code>。中英文资源中的占位符都应与调用方传参一致。</p>
+      <figure>
+        <figcaption>为缺失的资源键提供可格式化的备用模板</figcaption>
+        <pre tabindex="0"><code id="csharp-fallback-example">using System.Globalization;
+
+// 备用模板与资源模板使用相同的参数索引。
+string template = I18N.GetString("MissingProgress", "Task {0} has {1:N0} records");
+CultureInfo culture = CultureInfo.GetCultureInfo(I18N.Current.LanguageTag);
+string progressWithFallback = string.Format(culture, template, "A", 1234);
+// Task A has 1,234 records</code></pre>
+      </figure>
+      <h3>切换语言后重新取值</h3>
+      <p><code>GetString</code> 和 <code>Format</code> 返回调用当时的字符串。弹窗或提示在显示时重新取值即可。如果 ViewModel 缓存了界面文案，可以订阅 <code>I18N.Current.PropertyChanged</code>，在收到 <code>LanguageTag</code> 通知时重新取值并通知界面，在对象退出时解除订阅。切换应用语言应在界面线程进行。</p>
+      <figure>
+        <figcaption>同一个键随当前语言返回不同文案</figcaption>
+        <pre tabindex="0"><code id="csharp-language-example">I18N.Current.LanguageTag = "zh";
+string chineseTitle = I18N.GetString("Title");  // 设备状态
+
+I18N.Current.LanguageTag = "en";
+string englishTitle = I18N.GetString("Title");  // Device status</code></pre>
+      </figure>
+      <p>应用完全没有声明语言资源时，可以调用运行时的 <code>I18NExtension.GetString(key, fallback)</code> 取得备用文案、键名或空字符串。已引用资源项目的业务代码统一通过生成的 <code>I18N</code> 类调用。</p>
+    </section>
+
+    <section id="axaml" aria-labelledby="axaml-title">
+      <h2 id="axaml-title">在 AXAML 中绑定</h2>
+      <h3>固定键直接写入 Key</h3>
+      <p>页面使用 Avalonia 默认 XML 命名空间时可直接写 <code>{I18N ...}</code>。包通过 <code>XmlnsDefinition</code> 将 CLR 命名空间 <code>WB.I18N.Avalonia</code> 映射到 Avalonia 默认命名空间。需要显式前缀时，可声明 <code>xmlns:i18n="clr-namespace:WB.I18N.Avalonia;assembly=WB.I18N.Avalonia"</code>。 <a href="https://docs.avaloniaui.net/docs/xaml/namespaces">Avalonia XAML 命名空间</a></p>
+      <figure>
+        <figcaption>固定资源键与备用文案</figcaption>
+        <pre tabindex="0"><code>&lt;TextBlock Text="{I18N Key=Title}" /&gt;
+&lt;TextBlock Text="{I18N Key=MissingKey, Fallback='备用文案'}" /&gt;</code></pre>
+      </figure>
+      <h3>给 Key 和格式化参数绑定数据</h3>
+      <figure>
+        <figcaption>从页面 DataContext 读取资源键和参数</figcaption>
+        <pre tabindex="0"><code>&lt;TextBlock Text="{I18N Key={Binding StatusKey}}" /&gt;
+
+&lt;TextBlock&gt;
+  &lt;TextBlock.Text&gt;
+    &lt;I18N Key="TaskProgress"&gt;
+      &lt;Binding Path="TaskName" /&gt;
+      &lt;Binding Path="ItemCount" /&gt;
+    &lt;/I18N&gt;
+  &lt;/TextBlock.Text&gt;
+&lt;/TextBlock&gt;</code></pre>
+      </figure>
+      <p>把页面的 <code>DataContext</code> 设为下面的 ViewModel。启用了编译绑定的项目需声明相应的 <code>x:DataType</code>。更新键或参数属性后发出 <code>PropertyChanged</code>，页面会重新查找或格式化。</p>
+      <figure>
+        <figcaption>C# 中修改绑定的键及参数</figcaption>
+        <pre tabindex="0"><code>using System.ComponentModel;
+
+/// &lt;summary&gt;为设备状态页提供资源键和任务数据。&lt;/summary&gt;
+public sealed class StatusViewModel : INotifyPropertyChanged
+{
+    /// &lt;summary&gt;当前任务状态的资源键。&lt;/summary&gt;
+    public string StatusKey
+    {
+        get;
+        private set;
+    } = "StatusReady";
+
+    /// &lt;summary&gt;用于格式化的任务名称。&lt;/summary&gt;
+    public string TaskName
+    {
+        get;
+        private set;
+    } = "A";
+
+    /// &lt;summary&gt;用于格式化的记录数。&lt;/summary&gt;
+    public int ItemCount
+    {
+        get;
+        private set;
+    }
+
+    /// &lt;summary&gt;在数据更新后通知页面绑定。&lt;/summary&gt;
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// &lt;summary&gt;记录任务完成状态并刷新页面。&lt;/summary&gt;
+    public void Complete(string name, int count)
+    {
+        StatusKey = "StatusCompleted";
+        TaskName = name;
+        ItemCount = count;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusKey)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TaskName)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ItemCount)));
+    }
+}</code></pre>
+      </figure>
+      <div class="note"><p>普通字段或局部变量的赋值没有绑定通知。需要持续更新时，使用能发出通知的属性，例如 <code>INotifyPropertyChanged</code> 或 CommunityToolkit.Mvvm 的 <code>ObservableObject</code>。事件由界面线程上的交互或调度回调触发。</p></div>
+    </section>
+
+    <section id="cultures" aria-labelledby="cultures-title">
+      <h2 id="cultures-title">添加和切换语言</h2>
+      <h3>设置界面语言</h3>
+      <p>从 2.2.0 起，可以给 <code>I18N.Current.LanguageTag</code> 设置 .NET 支持的区域性名称。默认值仍为 <code>zh</code>。例如在界面线程执行 <code>I18N.Current.LanguageTag = "fr-CA";</code> 后，C# 取值和 AXAML 绑定都会从加拿大法语开始查找译文。</p>
+      <p>设置时会去除首尾空白，并采用 .NET 返回的规范名称，例如 <code>" FR-ca "</code> 会变成 <code>"fr-CA"</code>。空白或 .NET 拒绝的名称会保留当前设置。重复设置同一规范名称时，不会再次发出语言变更通知。</p>
+      <h3>添加译文资源</h3>
+      <ol>
+        <li>在默认 <code>Language.resx</code> 的同一目录加入 <code>Language.fr.resx</code> 或 <code>Language.fr-CA.resx</code>，生成操作设为「嵌入的资源」。</li>
+        <li>沿用默认资源中的键名和格式化参数索引。只需填写本语言要覆盖的译文。</li>
+        <li>重新构建或发布。应用会按 <code>fr-CA</code>、<code>fr</code>、默认 <code>Language.resx</code> 的顺序查找加拿大法语缺少的条目。</li>
+      </ol>
+      <p>ServoWeld 的「显示」页保留默认中文，并根据发布目录中的 <code>LanguageAsset</code> 语言卫星程序集生成可选项。新增译文随发布产物部署后，语言会以其本地名称出现在下拉框，无需改动 C# 语言列表。C# 仍可直接设置未部署译文的有效名称，取值会按上述顺序回退。</p>
+      <p><code>WB.Controls.Avalonia</code> 的内建文案有中英文两套。ServoWeld 对 <code>en</code>、<code>en-US</code> 等英语区域性选用英文内建文案，其余区域性使用中文内建文案。应用自己的译文独立使用 <code>LanguageAsset</code>。</p>
+    </section>
+
+    <section id="shipping" aria-labelledby="shipping-title">
+      <h2 id="shipping-title">构建和发布</h2>
+      <p>按应用现有方式执行 <code>dotnet publish</code>。默认资源随所属程序集编译，各语言译文发布到对应区域性命名的子目录，例如 <code>en</code>、<code>fr</code> 或 <code>fr-CA</code>。分发完整发布目录，保留这些子目录和卫星程序集。 <a href="https://learn.microsoft.com/en-us/dotnet/core/extensions/package-and-deploy-resources">.NET 资源打包与部署</a></p>
+      <figure>
+        <figcaption>ServoWeld 添加法语资源后的发布结构示例</figcaption>
+        <pre tabindex="0"><code>publish/
+├── ServoWeld.dll
+├── WB.I18N.Avalonia.dll
+├── LanguageAsset.dll
+├── en/
+│   └── LanguageAsset.resources.dll
+└── fr/
+    └── LanguageAsset.resources.dll</code></pre>
+      </figure>
+      <p>运行时和源生成器来自同一个 NuGet 包，应用的语言文件分别由资源项目编译。源生成器由编译器从包的 <code>analyzers</code> 目录加载。</p>
+    </section>
+
+    <section id="troubleshooting" aria-labelledby="troubleshooting-title">
+      <h2 id="troubleshooting-title">常见排查</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">问题</th><th scope="col">检查位置</th></tr></thead>
+          <tbody>
+            <tr><td>找不到 <code>GetString</code> 或 <code>Current</code></td><td>在声明分部类的项目里安装 NuGet 包并重建。类需为顶层、非泛型的 <code>static partial class</code>。检查 <code>WBI18N001</code> 至 <code>WBI18N004</code> 的编译诊断。</td></tr>
+            <tr><td><code>typeof</code> 提示找不到资源类型</td><td>检查项目是否已有可访问的强类型资源类。只有 <code>.resx</code> 时直接使用字符串写法。单参数 <code>typeof</code> 需要 2.1.0 及以上，类型全名应与中性资源清单名匹配。</td></tr>
+            <tr><td>编译提示 <code>CS0542</code></td><td>资源文件的自定义工具设为空。若 <code>Language.Designer.cs</code> 由强类型生成器生成了同名成员，恢复由 <code>I18N</code> 读取嵌入资源的方式。</td></tr>
+            <tr><td>页面显示键名或备用文案</td><td>检查键的大小写、资源的嵌入方式、特性里的清单名。资源在类库时，确认应用已引用并加载该类库。</td></tr>
+            <tr><td>换键或参数后仍是旧文案</td><td>确认页面正确绑定 <code>DataContext</code> 和属性路径，且赋值时对对应属性发出 <code>PropertyChanged</code>。</td></tr>
+            <tr><td>发布后缺少新语言选项或仍显示默认文案</td><td>检查发布目录中是否保留对应区域性的卫星程序集，以及选中的区域性名称和需要翻译的资源键。</td></tr>
+            <tr><td>格式化报错</td><td>逐个检查各语言的占位符、数字格式和参数个数。各语言可按语序调整占位符位置。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="verification" aria-labelledby="verification-title">
+      <h2 id="verification-title">测试与验证</h2>
+      <p>以下为 2.2.0 的常规场景回归和有界压测。分部类生成沿用 2.1.0 的实现。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">场景</th><th scope="col">实测结果</th></tr></thead>
+          <tbody>
+            <tr><td>.NET 8 核心用例及压测</td><td>通过 80,821 项断言。覆盖四路并行只读取值共 80,000 次，以及 800 次中英文切换。</td></tr>
+            <tr><td>未注册任何语言资源</td><td>通过 7 项断言。运行时走备用文案、键名或空字符串。</td></tr>
+            <tr><td>NuGet 及分部类生成</td><td>2.1.0 的 13 个场景全部通过，覆盖字符串声明、同程序集和跨程序集的单参数 <code>typeof</code>、双参数声明及 5 个预期编译诊断。</td></tr>
+            <tr><td>语言与区域性</td><td>2.2.0 的 21 项断言通过，覆盖 <code>fr-CA</code> 精确译文、<code>fr</code> 父级译文、<code>ja-JP</code> 默认回退、本地格式化、标签规范化和变更通知。</td></tr>
+            <tr><td>C# 手册示例</td><td>直接提取本页 5 段后台代码，在 .NET 8 编译运行并通过 25 项断言，包括 ServoWeld 现有中英文资源。</td></tr>
+            <tr><td>Windows AXAML 与设计模式</td><td>固定键和固定备用文案、反射和编译绑定、C# 改键及修改格式化参数均通过。连续校验 2,000 轮语言切换和改值后的显示结果。</td></tr>
+            <tr><td>ServoWeld 应用回归</td><td>Windows 界面自动发现测试包中的 <code>fr</code> 和 <code>fr-CA</code>。选择加拿大法语后，界面显示区域译文、父级译文及 <code>5,00</code> 数字格式。菜单、显示页及四主题切换通过。Release 构建及 win-x64、linux-x64 发布通过。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <footer><div class="wrap"><p>WB.I18N.Avalonia · 本地安装与使用参考</p></div></footer>
+</body>
+</html>
