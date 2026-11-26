@@ -65,12 +65,18 @@ public sealed class DemoViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    /// <summary>获取当前应用语言标签。</summary>
+    /// <summary>显示当前应用语言标签，不变文化下以中性资源说明代替空标签。</summary>
     public string CurrentLanguage
     {
         get
         {
-            return DemoI18N.Current.LanguageTag;
+            string language = DemoI18N.Current.LanguageTag;
+            if (language.Length == 0)
+            {
+                return "中性资源";
+            }
+
+            return language;
         }
     }
 

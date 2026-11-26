@@ -299,7 +299,7 @@ object?[] formatArguments = [taskName, itemCount];
 string progressFromArray = I18N.Format(I18NKeys.TaskProgress, formatArguments);
 // Task A has 1,234 records</code></pre>
       </figure>
-      <p>省略参数或传入空数组时，<code>Format</code> 原样返回模板。传入参数后，模板语法错误或索引超出参数范围会抛出 <code>FormatException</code>。中英文资源中的占位符都应与调用方传参一致。</p>
+      <p>省略参数或传入空数组时，<code>Format</code> 原样返回模板。传入参数后，如果模板语法错误、索引超出参数范围，或参数格式不匹配，C# 和 AXAML 格式化都会返回已查到的原始模板。各语言资源中的占位符都应与调用方传参一致。</p>
       <figure>
         <figcaption>为缺失的资源键提供可格式化的备用模板</figcaption>
         <pre tabindex="0"><code id="csharp-fallback-example">using System.Globalization;
@@ -398,7 +398,7 @@ public sealed class StatusViewModel : INotifyPropertyChanged
     <section id="cultures" aria-labelledby="cultures-title">
       <h2 id="cultures-title">添加和切换语言</h2>
       <h3>设置界面语言</h3>
-      <p>从 2.2.0 起，可以给 <code>I18N.Current.LanguageTag</code> 设置 .NET 支持的区域性名称。默认值仍为 <code>zh</code>。例如在界面线程执行 <code>I18N.Current.LanguageTag = "fr-CA";</code> 后，C# 取值和 AXAML 绑定都会从加拿大法语开始查找译文。</p>
+      <p>库首次初始化时采用宿主的 <code>CultureInfo.CurrentUICulture</code>。宿主使用不变文化或无法取得对应文化时，<code>LanguageTag</code> 为空，直接读取默认 <code>.resx</code>，数字和日期采用不变文化格式。应用需要固定启动语言时，可在创建界面前显式设置语言，例如 <code>zh</code>。在界面线程执行 <code>I18N.Current.LanguageTag = "fr-CA";</code> 后，C# 取值和 AXAML 绑定都会从加拿大法语开始查找译文。宿主日后更改线程文化时，需要通过 <code>LanguageTag</code> 显式切换库内语言。</p>
       <p>设置时会去除首尾空白，并采用 .NET 返回的规范名称，例如 <code>" FR-ca "</code> 会变成 <code>"fr-CA"</code>。空白或 .NET 拒绝的名称会保留当前设置。重复设置同一规范名称时，不会再次发出语言变更通知。</p>
       <h3>添加译文资源</h3>
       <ol>
@@ -439,7 +439,7 @@ public sealed class StatusViewModel : INotifyPropertyChanged
             <tr><td>页面显示键名或备用文案</td><td>检查键的大小写、资源的嵌入方式、特性里的清单名。资源在类库时，确认应用已引用并加载该类库。</td></tr>
             <tr><td>换键或参数后仍是旧文案</td><td>确认页面正确绑定 <code>DataContext</code> 和属性路径，且赋值时对对应属性发出 <code>PropertyChanged</code>。</td></tr>
             <tr><td>发布后缺少新语言选项或仍显示默认文案</td><td>检查发布目录中是否保留对应区域性的卫星程序集，以及选中的区域性名称和需要翻译的资源键。</td></tr>
-            <tr><td>格式化报错</td><td>逐个检查各语言的占位符、数字格式和参数个数。各语言可按语序调整占位符位置。</td></tr>
+            <tr><td>界面显示原始格式模板</td><td>逐个检查各语言的占位符、数字格式和参数个数。各语言可按语序调整占位符位置。</td></tr>
           </tbody>
         </table>
       </div>

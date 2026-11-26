@@ -6,6 +6,14 @@
 dotnet run -c Release --project benchmarks/WB.I18N.Avalonia.Benchmarks/WB.I18N.Avalonia.Benchmarks.csproj
 ```
 
+只复测热键查询与 1、2、3 参数格式化时，运行：
+
+```powershell
+dotnet run -c Release --project benchmarks/WB.I18N.Avalonia.Benchmarks/WB.I18N.Avalonia.Benchmarks.csproj -- --focused
+```
+
+`Format/n-arg(s)` 与 `Convert/n-arg(s)` 复用计时前准备好的参数、装箱值和绑定列表。耗时和每次分配量包含格式化结果字符串。完整压测中的 `Format/params-2` 另测直接传值时调用方创建数组与数字装箱的成本。对比改动前后时，应在两个版本使用同一份压测代码与资源。
+
 固定键和动态键的 `ProvideValue` 创建成本必须在独立进程测量，防止前一场景的大量分配改变 GC 堆状态：
 
 ```powershell

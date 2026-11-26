@@ -21,6 +21,7 @@ dotnet build samples/WB.I18N.Avalonia.Demo.AssemblyDeclaration/WB.I18N.Avalonia.
 
 ## 运行界面涵盖的用法
 
+- 启动时采用宿主的界面语言。不变文化下显示「中性资源」，并读取默认 `Language.resx`。仍可通过示例按钮切换到指定语言。
 - `Localization/I18N.cs` 使用 `[I18NResource("WB.I18N.Avalonia.Demo.Resources.Language")]` 声明同程序集资源。
 - `DemoViewModel` 使用 `I18N.GetString(I18NKeys.ProductTeach)` 和 `I18N.Format(I18NKeys.TaskProgress, ...)`。状态切换也通过 `I18NKeys.StatusReady` 和 `I18NKeys.StatusCompleted` 提供动态键。语言变化时会通知已绑定的 C# 查询结果刷新。
 - `I18NKeys` 从 `Language.resx` 生成。特殊字符会映射为有效的 C# 标识符，同名时生成可区分的成员，常量内容保留原始资源键。语言或地区资源文件为现有键提供翻译。

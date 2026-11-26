@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Regional" xml:space="preserve"><value>中性地区文案</value></data>
+  <data name="Parent" xml:space="preserve"><value>中性父区域文案</value></data>
+  <data name="Neutral" xml:space="preserve"><value>中性文案</value></data>
+  <data name="OneArgument" xml:space="preserve"><value>{0}</value></data>
+  <data name="TwoArguments" xml:space="preserve"><value>{0}/{1}</value></data>
+  <data name="ThreeArguments" xml:space="preserve"><value>{0}/{1}/{2}</value></data>
+  <data name="FourArguments" xml:space="preserve"><value>{0}/{1}/{2}/{3}</value></data>
+  <data name="BadTemplate" xml:space="preserve"><value>格式 {0</value></data>
+  <data name="MissingArgument" xml:space="preserve"><value>缺少 {4}</value></data>
+  <data name="Number" xml:space="preserve"><value>{0:N1}</value></data>
+</root>

@@ -15,7 +15,7 @@ public static partial class I18N
 
 资源类型与默认资源的名称不同时，可显式指定资源名，例如 `[I18NResource(typeof(SharedTexts.ResourceAnchor), "SharedTexts.Resources.Language")]`。`ResourceAnchor` 可使用该类库中已有的类型。分部类放在类库时，应用引用该类库并在初始化时通过 `I18N.Current` 使用共享语言状态。
 
-生成的 C# 入口有 `I18N.GetString(key)`、`I18N.Format(key, args)` 和 `I18N.Current.LanguageTag`。从 2.2.0 起，可将 `LanguageTag` 设为 .NET 能识别的语言或地区标签，例如 `zh`、`en`、`fr`、`fr-CA` 或 `ja-JP`。默认值是 `zh`。设置时会去除首尾空白并规范标签大小写，空值和 .NET 无法识别的值会被忽略。
+生成的 C# 入口有 `I18N.GetString(key)`、`I18N.Format(key, args)` 和 `I18N.Current.LanguageTag`。库首次初始化时采用宿主的 `CultureInfo.CurrentUICulture`。宿主使用不变文化或无法取得对应文化时，`LanguageTag` 为空，直接读取默认资源。应用需要固定启动语言时，可以在创建界面前显式设置语言，例如 `zh`、`en`、`fr`、`fr-CA` 或 `ja-JP`。设置时会去除首尾空白并规范标签大小写，空值和 .NET 无法识别的值会被忽略。
 
 构建时会根据中性 `.resx` 中的键生成与调用入口同命名空间的常量类。类名由声明类型的名字加上 `Keys` 组成，例如 `I18NKeys`。在 IDE 中键入 `I18NKeys.` 即可选键。
 
@@ -36,6 +36,6 @@ string progress = I18N.Format(I18NKeys.TaskProgress, "A", 1234);
 </ItemGroup>
 ```
 
-在原资源文件旁添加对应语言的 `.resx`，例如 `Language.fr.resx` 或 `Language.fr-CA.resx`，即可提供新增译文。资源按具体语言、上级语言和默认 `.resx` 的顺序回退。`I18N.Format` 使用当前所选语言的数字和日期格式；设置 `LanguageTag` 仅改变本库的语言状态。
+在原资源文件旁添加对应语言的 `.resx`，例如 `Language.fr.resx` 或 `Language.fr-CA.resx`，即可提供新增译文。资源按具体语言、上级语言和默认 `.resx` 的顺序回退。`I18N.Format` 使用当前所选语言的数字和日期格式。C# 和 AXAML 格式化在占位符有误或参数不匹配时返回原始模板。设置 `LanguageTag` 仅改变本库的语言状态。
 
 在 AXAML 中将 `localization` 映射到 `I18N` 所在的命名空间，可以通过 `{I18N Key={x:Static localization:I18NKeys.ProductTeach}}` 引用生成的键。动态键可使用 `{I18N Key={Binding ResourceKey}}`。界面语言或已绑定的资源键发生变化时，文案会自动更新。

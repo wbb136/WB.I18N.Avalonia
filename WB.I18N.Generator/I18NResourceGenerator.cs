@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using WB.I18N.Generator.Models;
 
 namespace WB.I18N.Generator;
 
@@ -61,7 +62,7 @@ public sealed class I18NResourceGenerator : IIncrementalGenerator
         isEnabledByDefault: true
     );
 
-    /// <summary>注册资源声明以及用于生成键常量的默认资源文件。</summary>
+    /// <summary>注册值语义输入，并分别输出生成的源码和定位到当前编译的诊断。</summary>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var declarations = context.SyntaxProvider.ForAttributeWithMetadataName(
@@ -72,17 +73,23 @@ public sealed class I18NResourceGenerator : IIncrementalGenerator
             },
             static (attributeContext, _) =>
             {
-                return attributeContext;
+                return ProjectDeclaration(attributeContext);
             }
-        );
+        ).WithTrackingName("WBI18N.Declarations");
 
         var assemblyRegistration = context.CompilationProvider.Select(static (compilation, _) =>
         {
-            return compilation.Assembly.GetAttributes().FirstOrDefault(static attribute =>
+            AttributeData? attribute = compilation.Assembly.GetAttributes().FirstOrDefault(static attribute =>
             {
                 return attribute.AttributeClass?.ToDisplayString() == AttributeName;
             });
-        });
+            if (attribute is null)
+            {
+                return (HasAttribute: false, Arguments: (string?)null);
+            }
+
+            return (HasAttribute: true, Arguments: GetRegistrationArguments(attribute));
+        }).WithTrackingName("WBI18N.AssemblyRegistration");
 
         var keySources = context.AdditionalTextsProvider
             .Where(static file =>
@@ -97,117 +104,223 @@ public sealed class I18NResourceGenerator : IIncrementalGenerator
             .Where(static source =>
             {
                 return source is not null;
+            })
+            .WithTrackingName("WBI18N.ResourceKeys");
+
+        var declarationValues = declarations.Collect().Select(static (items, _) =>
+        {
+            return new EquatableArray<ResourceDeclaration>(items);
+        });
+        var resourceValues = keySources.Collect().Select(static (items, _) =>
+        {
+            return new EquatableArray<ResourceKeySource?>(items);
+        });
+        var output = declarationValues.Combine(assemblyRegistration).Combine(resourceValues)
+            .Select(static (input, _) =>
+            {
+                return CreateOutput(input.Left.Left.Items, input.Left.Right, input.Right.Items);
             });
 
-        context.RegisterSourceOutput(
-            declarations.Collect().Combine(assemblyRegistration).Combine(keySources.Collect()),
-            static (productionContext, input) =>
+        var sources = output.SelectMany(static (result, _) =>
+        {
+            if (result.Source.HasValue)
             {
-                Generate(productionContext, input.Left.Left, input.Left.Right, input.Right);
+                return ImmutableArray.Create(result.Source.Value);
             }
-        );
+
+            return ImmutableArray<SourceEmission>.Empty;
+        }).WithTrackingName("WBI18N.SourceModel");
+
+        context.RegisterSourceOutput(sources, static (productionContext, source) =>
+        {
+            EmitSources(productionContext, source);
+        });
+
+        // 只有待报告的诊断才关联当前编译；生成源码不依赖语法树或诊断位置。
+        var pendingDiagnostics = output.SelectMany(static (result, _) =>
+        {
+            return result.Diagnostics.Items;
+        }).WithTrackingName("WBI18N.Diagnostics");
+        var diagnostics = pendingDiagnostics.Combine(context.CompilationProvider).Select(static (input, _) =>
+        {
+            return BindDiagnostic(input.Left, (CSharpCompilation)input.Right);
+        });
+
+        context.RegisterSourceOutput(diagnostics, static (productionContext, diagnostic) =>
+        {
+            productionContext.ReportDiagnostic(diagnostic);
+        });
     }
 
-    /// <summary>检查资源声明并生成调用入口和键常量，保留已有的兼容程序集标记。</summary>
-    private static void Generate(
-        SourceProductionContext context,
-        ImmutableArray<GeneratorAttributeSyntaxContext> declarations,
-        AttributeData? assemblyRegistration,
+    /// <summary>从 Roslyn 的符号和声明节点提取可跨编译比较的值。</summary>
+    private static ResourceDeclaration ProjectDeclaration(GeneratorAttributeSyntaxContext context)
+    {
+        SyntaxNode node = context.TargetNode;
+        var compilation = (CSharpCompilation)context.SemanticModel.Compilation;
+        var site = new DiagnosticSite(compilation.SyntaxTrees.IndexOf(node.SyntaxTree), node.SpanStart, node.Span.Length);
+        var classDeclaration = node as ClassDeclarationSyntax;
+        var target = context.TargetSymbol as INamedTypeSymbol;
+        if (classDeclaration is null || target is null || !target.IsStatic || target.Arity != 0 ||
+            target.ContainingType is not null || classDeclaration.Modifiers.Any(SyntaxKind.FileKeyword) ||
+            !classDeclaration.Modifiers.Any(SyntaxKind.PartialKeyword))
+        {
+            return new ResourceDeclaration(site);
+        }
+
+        string accessibility = "internal";
+        if (target.DeclaredAccessibility == Accessibility.Public)
+        {
+            accessibility = "public";
+        }
+
+        var identity = new SourceIdentity(
+            target.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+            target.Name + "Keys",
+            GetNamespaceDeclaration(target),
+            accessibility
+        );
+
+        AttributeData attribute = context.Attributes[0];
+        string? registrationArguments = GetRegistrationArguments(attribute);
+        if (registrationArguments is null)
+        {
+            return new ResourceDeclaration(site, identity);
+        }
+
+        ImmutableArray<TypedConstant> arguments = attribute.ConstructorArguments;
+        var resourceType = arguments[0].Value as INamedTypeSymbol;
+        string? resourceBaseName;
+        if (arguments.Length == 2)
+        {
+            resourceBaseName = arguments[1].Value as string;
+        }
+        else
+        {
+            resourceBaseName = arguments[0].Value as string ?? GetResourceTypeName(resourceType);
+        }
+
+        string resourceAssembly = (resourceType?.ContainingAssembly ?? target.ContainingAssembly).Name;
+        return new ResourceDeclaration(site, identity, registrationArguments, resourceBaseName, resourceAssembly);
+    }
+
+    /// <summary>按现有诊断优先级确定源码和诊断，只保留生成所需的值。</summary>
+    private static (SourceEmission? Source, EquatableArray<PendingDiagnostic> Diagnostics) CreateOutput(
+        ImmutableArray<ResourceDeclaration> declarations,
+        (bool HasAttribute, string? Arguments) assemblyRegistration,
         ImmutableArray<ResourceKeySource?> keySources
     )
     {
         if (declarations.IsDefaultOrEmpty)
         {
-            return;
+            return (null, default);
         }
 
         if (declarations.Length > 1)
         {
-            foreach (GeneratorAttributeSyntaxContext declaration in declarations)
+            var duplicates = ImmutableArray.CreateBuilder<PendingDiagnostic>(declarations.Length);
+            foreach (ResourceDeclaration declaration in declarations)
             {
-                context.ReportDiagnostic(Diagnostic.Create(MultipleDeclarations, declaration.TargetNode.GetLocation()));
+                duplicates.Add(new PendingDiagnostic(MultipleDeclarations.Id, declaration.Site));
             }
 
-            return;
+            return (null, new EquatableArray<PendingDiagnostic>(duplicates.MoveToImmutable()));
         }
 
-        GeneratorAttributeSyntaxContext resource = declarations[0];
-        Location location = resource.TargetNode.GetLocation();
-        if (resource.TargetNode is not ClassDeclarationSyntax classDeclaration ||
-            resource.TargetSymbol is not INamedTypeSymbol { IsStatic: true, Arity: 0, ContainingType: null } target ||
-            classDeclaration.Modifiers.Any(SyntaxKind.FileKeyword) ||
-            !classDeclaration.Modifiers.Any(SyntaxKind.PartialKeyword))
+        ResourceDeclaration resource = declarations[0];
+        if (!resource.Identity.HasValue)
         {
-            context.ReportDiagnostic(Diagnostic.Create(InvalidDeclaration, location));
-            return;
+            return (null, CreateDiagnostic(InvalidDeclaration.Id, resource.Site));
         }
 
-        AttributeData classRegistration = resource.Attributes[0];
-        string? classArguments = GetRegistrationArguments(classRegistration);
-        if (classArguments is null)
+        if (resource.RegistrationArguments is null)
         {
-            context.ReportDiagnostic(Diagnostic.Create(InvalidRegistration, location));
-            return;
+            return (null, CreateDiagnostic(InvalidRegistration.Id, resource.Site));
         }
 
-        if (assemblyRegistration is not null && GetRegistrationArguments(assemblyRegistration) != classArguments)
+        if (assemblyRegistration.HasAttribute && assemblyRegistration.Arguments != resource.RegistrationArguments)
         {
-            context.ReportDiagnostic(Diagnostic.Create(ConflictingRegistration, location));
-            return;
+            return (null, CreateDiagnostic(ConflictingRegistration.Id, resource.Site));
         }
 
-        string registration = assemblyRegistration is null
-            ? $"[assembly: global::WB.I18N.Avalonia.I18NResourceAttribute({classArguments})]"
-            : string.Empty;
-        context.AddSource("I18N.g.cs", SourceText.From(CreateSource(target, registration), Encoding.UTF8));
-        GenerateKeys(context, target, classRegistration, keySources, location);
-    }
+        string registration = string.Empty;
+        if (!assemblyRegistration.HasAttribute)
+        {
+            registration = $"[assembly: global::WB.I18N.Avalonia.I18NResourceAttribute({resource.RegistrationArguments})]";
+        }
 
-    /// <summary>仅为声明指向的默认资源生成键，避免混入同应用中的其他资源或卫星程序集文案。</summary>
-    private static void GenerateKeys(
-        SourceProductionContext context,
-        INamedTypeSymbol target,
-        AttributeData registration,
-        ImmutableArray<ResourceKeySource?> keySources,
-        Location location
-    )
-    {
-        ImmutableArray<TypedConstant> arguments = registration.ConstructorArguments;
-        var resourceType = arguments[0].Value as INamedTypeSymbol;
-        string? baseName = arguments.Length == 2
-            ? arguments[1].Value as string
-            : arguments[0].Value as string ?? GetResourceTypeName(resourceType);
-        string assemblyName = (resourceType?.ContainingAssembly ?? target.ContainingAssembly).Name;
-
+        // 选择与声明的资源名称和程序集匹配的默认资源文件，保持输入顺序以报告首个读取错误。
         var keys = ImmutableArray.CreateBuilder<string>();
         foreach (ResourceKeySource? source in keySources)
         {
             if (source is null ||
-                !string.Equals(source.BaseName, baseName, StringComparison.Ordinal) ||
+                !string.Equals(source.BaseName, resource.ResourceBaseName, StringComparison.Ordinal) ||
                 (source.AssemblyName is not null &&
-                    !string.Equals(source.AssemblyName, assemblyName, StringComparison.OrdinalIgnoreCase)))
+                    !string.Equals(source.AssemblyName, resource.ResourceAssembly, StringComparison.OrdinalIgnoreCase)))
             {
                 continue;
             }
 
             if (source.Error is not null)
             {
-                context.ReportDiagnostic(Diagnostic.Create(InvalidKeySource, location, source.Path, source.Error));
-                return;
+                var diagnostic = new PendingDiagnostic(InvalidKeySource.Id, resource.Site, source.Path, source.Error);
+                return (
+                    new SourceEmission(resource.Identity.Value, registration),
+                    new EquatableArray<PendingDiagnostic>(ImmutableArray.Create(diagnostic))
+                );
             }
 
-            keys.AddRange(source.Keys);
+            keys.AddRange(source.Keys.Items);
         }
 
-        if (keys.Count == 0)
+        var emission = new SourceEmission(resource.Identity.Value, registration, new EquatableArray<string>(keys.ToImmutable()));
+        return (emission, default);
+    }
+
+    /// <summary>记录不带额外消息参数的声明诊断。</summary>
+    private static EquatableArray<PendingDiagnostic> CreateDiagnostic(string id, DiagnosticSite site)
+    {
+        return new EquatableArray<PendingDiagnostic>(ImmutableArray.Create(new PendingDiagnostic(id, site)));
+    }
+
+    /// <summary>在当前语法树上恢复诊断位置，保留源码文件定位和行映射。</summary>
+    private static Diagnostic BindDiagnostic(PendingDiagnostic diagnostic, CSharpCompilation compilation)
+    {
+        DiagnosticSite site = diagnostic.Site;
+        SyntaxTree tree = compilation.SyntaxTrees[site.TreeIndex];
+        Location location = Location.Create(tree, new TextSpan(site.SpanStart, site.SpanLength));
+        switch (diagnostic.Id)
+        {
+            case "WBI18N001":
+                return Diagnostic.Create(InvalidDeclaration, location);
+            case "WBI18N002":
+                return Diagnostic.Create(MultipleDeclarations, location);
+            case "WBI18N003":
+                return Diagnostic.Create(ConflictingRegistration, location);
+            case "WBI18N004":
+                return Diagnostic.Create(InvalidRegistration, location);
+            case "WBI18N005":
+                return Diagnostic.Create(InvalidKeySource, location, diagnostic.ResourcePath, diagnostic.Error);
+            default:
+                throw new InvalidOperationException($"未定义的本地化诊断编号：{diagnostic.Id}");
+        }
+    }
+
+    /// <summary>按原有顺序生成调用入口和可选的资源键常量。</summary>
+    private static void EmitSources(SourceProductionContext context, SourceEmission source)
+    {
+        context.AddSource("I18N.g.cs", SourceText.From(CreateSource(source), Encoding.UTF8));
+        if (source.Keys.Items.IsEmpty)
         {
             return;
         }
 
-        string name = target.Name + "Keys";
-        string accessibility = target.DeclaredAccessibility == Accessibility.Public ? "public" : "internal";
-        string sourceText = ResourceKeyEmitter.CreateSource(name, accessibility, GetNamespaceDeclaration(target), keys);
-        context.AddSource("I18NKeys.g.cs", SourceText.From(sourceText, Encoding.UTF8));
+        string keysSource = ResourceKeyEmitter.CreateSource(
+            source.Identity.KeysName,
+            source.Identity.Accessibility,
+            source.Identity.NamespaceDeclaration,
+            source.Keys.Items
+        );
+        context.AddSource("I18NKeys.g.cs", SourceText.From(keysSource, Encoding.UTF8));
     }
 
     /// <summary>获取资源类型用于定位资源清单的名称，嵌套类型使用运行时的加号分隔符。</summary>
@@ -258,11 +371,12 @@ public sealed class I18NResourceGenerator : IIncrementalGenerator
     }
 
     /// <summary>生成和调用方类型匹配的分部声明，并转发到唯一的本地化入口。</summary>
-    private static string CreateSource(INamedTypeSymbol target, string registration)
+    private static string CreateSource(SourceEmission source)
     {
-        string namespaceDeclaration = GetNamespaceDeclaration(target);
-        string name = target.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-        string accessibility = target.DeclaredAccessibility == Accessibility.Public ? "public" : "internal";
+        string namespaceDeclaration = source.Identity.NamespaceDeclaration;
+        string name = source.Identity.Name;
+        string accessibility = source.Identity.Accessibility;
+        string registration = source.Registration;
 
         return $$"""
             // <auto-generated/>

@@ -52,13 +52,17 @@ internal static class Program
                 return;
             }
 
+            if (args[0] == "--focused")
+            {
+                MeasureFocused();
+                Console.WriteLine($"Sink: {_sink}");
+                return;
+            }
+
             throw new ArgumentException("未知压测场景。", nameof(args));
         }
 
-        Measure("GetString/hit", () =>
-        {
-            return I18NExtension.GetString("Greeting");
-        });
+        MeasureFocused();
         Measure("GetString/miss", () =>
         {
             return I18NExtension.GetString("NotFound");
@@ -67,21 +71,17 @@ internal static class Program
         {
             return I18NExtension.GetString(" Greeting ");
         });
-        Measure("Format/2-args", () =>
+        // 单独保留直接传值的调用方式，记录调用方创建 params 数组和装箱的成本。
+        Measure("Format/params-2", () =>
         {
             return I18NExtension.Format("Template", "Alice", 1234);
         });
 
         var converter = (IMultiValueConverter)I18NExtension.Current;
         object?[] plainValues = ["en", "Greeting", null];
-        object?[] formatValues = ["en", "Template", null, "Alice", 1234];
         Measure("Convert/plain", () =>
         {
             return converter.Convert(plainValues, typeof(string), null, CultureInfo.InvariantCulture)?.ToString() ?? string.Empty;
-        });
-        Measure("Convert/format", () =>
-        {
-            return converter.Convert(formatValues, typeof(string), null, CultureInfo.InvariantCulture)?.ToString() ?? string.Empty;
         });
 
         MeasureParallel("Parallel/hit", worker =>
@@ -106,6 +106,41 @@ internal static class Program
             return I18NExtension.Current.LanguageTag;
         });
         Console.WriteLine($"Sink: {_sink}");
+    }
+
+    /// <summary>单独测量热键命中及一到三个格式化参数的场景。</summary>
+    private static void MeasureFocused()
+    {
+        Measure("GetString/hit", () =>
+        {
+            return I18NExtension.GetString("Greeting");
+        });
+
+        MeasureFormatting("1-arg", "TemplateOne", ["Alice"]);
+        MeasureFormatting("2-args", "Template", ["Alice", 1234]);
+        MeasureFormatting("3-args", "TemplateThree", ["Alice", 1234, "A"]);
+    }
+
+    /// <summary>使用同一份预创建参数分别测量 C# 格式化与多绑定转换。</summary>
+    private static void MeasureFormatting(string scenario, string key, object?[] arguments)
+    {
+        var converter = (IMultiValueConverter)I18NExtension.Current;
+        CultureInfo bindingCulture = CultureInfo.InvariantCulture;
+        // 前三项对应语言、资源键与备用文案。参数数组和装箱都在采样前准备。
+        var values = new object?[arguments.Length + 3];
+        values[0] = I18NExtension.Current.LanguageTag;
+        values[1] = key;
+        Array.Copy(arguments, 0, values, 3, arguments.Length);
+
+        Measure($"Format/{scenario}", () =>
+        {
+            return I18NExtension.Format(key, arguments);
+        });
+
+        Measure($"Convert/{scenario}", () =>
+        {
+            return (string)converter.Convert(values, typeof(string), null, bindingCulture)!;
+        });
     }
 
     /// <summary>预热后记录中位耗时与每次调用的线程分配字节数。</summary>

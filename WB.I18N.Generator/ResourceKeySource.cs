@@ -6,11 +6,12 @@ using System.Xml;
 using System.Xml.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using WB.I18N.Generator.Models;
 
 namespace WB.I18N.Generator;
 
 /// <summary>保存一个默认资源文件及其提供的字符串键。</summary>
-internal sealed class ResourceKeySource
+internal sealed class ResourceKeySource : IEquatable<ResourceKeySource>
 {
     private const string BaseNameOption = "build_metadata.AdditionalFiles.WBI18NResourceBaseName";
     private const string AssemblyOption = "build_metadata.AdditionalFiles.WBI18NResourceAssembly";
@@ -27,7 +28,7 @@ internal sealed class ResourceKeySource
         BaseName = baseName;
         AssemblyName = assemblyName;
         Path = path;
-        Keys = keys;
+        Keys = new EquatableArray<string>(keys);
         Error = error;
     }
 
@@ -41,10 +42,37 @@ internal sealed class ResourceKeySource
     public string Path { get; }
 
     /// <summary>获取默认资源中定义的字符串键。</summary>
-    public ImmutableArray<string> Keys { get; }
+    public EquatableArray<string> Keys { get; }
 
     /// <summary>获取读取失败的原因，未失败时为空。</summary>
     public string? Error { get; }
+
+    /// <summary>按资源元数据、诊断信息和键序列比较读取结果。</summary>
+    public bool Equals(ResourceKeySource? other)
+    {
+        if (other is null)
+        {
+            return false;
+        }
+
+        return string.Equals(BaseName, other.BaseName, StringComparison.Ordinal) &&
+            string.Equals(AssemblyName, other.AssemblyName, StringComparison.Ordinal) &&
+            string.Equals(Path, other.Path, StringComparison.Ordinal) &&
+            string.Equals(Error, other.Error, StringComparison.Ordinal) &&
+            Keys.Equals(other.Keys);
+    }
+
+    /// <summary>比较当前资源键源与指定对象的值。</summary>
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as ResourceKeySource);
+    }
+
+    /// <summary>根据与相等规则相同的值计算哈希。</summary>
+    public override int GetHashCode()
+    {
+        return (BaseName, AssemblyName, Path, Error, Keys).GetHashCode();
+    }
 
     /// <summary>读取构建系统标记的默认资源，仅提取字符串条目的名称。</summary>
     public static ResourceKeySource? Read(

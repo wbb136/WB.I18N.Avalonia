@@ -26,6 +26,10 @@ string message = I18N.Format(I18NKeys.TaskProgress, "A", 1234);
 
 把 `ProductTeach`、`TaskProgress` 等键加到默认资源 `Language.resx`。构建时会在 `I18N` 所在命名空间生成 `I18NKeys`，资源键可直接用于 C# 调用和 AXAML。
 
+库首次初始化时采用宿主的 `CultureInfo.CurrentUICulture`。宿主使用不变文化或无法取得对应文化时，`LanguageTag` 为空，直接读取默认资源。应用需要固定启动语言时，可以在创建界面前显式设置 `LanguageTag`。切换语言只影响库内资源查找和格式化。
+
+C# `Format` 和 AXAML 格式参数遇到错误的占位符或不匹配的参数时，返回原始资源模板。
+
 ```xml
 <!-- 在外层元素声明 xmlns:localization="using:MyApp.Localization"。 -->
 <TextBlock Text="{I18N Key={x:Static localization:I18NKeys.ProductTeach}}" />
@@ -38,6 +42,7 @@ string message = I18N.Format(I18NKeys.TaskProgress, "A", 1234);
 
 ```powershell
 dotnet build WB.I18N.Avalonia.sln -c Release
+dotnet test WB.I18N.Avalonia.sln -c Release
 dotnet run --project samples/WB.I18N.Avalonia.Demo/WB.I18N.Avalonia.Demo.csproj
 ```
 

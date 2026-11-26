@@ -19,13 +19,14 @@ public sealed partial class I18NExtension : INotifyPropertyChanged, IMultiValueC
     private static ResourceManager? _resources;
     private static Assembly? _declarationAssembly;
     private static int _entryAssemblyChecked;
-    private static CultureInfo _resourceCulture = CultureInfo.GetCultureInfo("zh");
+    private static CultureInfo _resourceCulture = GetInitialResourceCulture();
     private static event PropertyChangedEventHandler? LanguageChanged;
 
     /// <summary>获取应用共用的语言绑定源。</summary>
     public static I18NExtension Current { get; } = new();
 
-    /// <summary>获取或设置 .NET 支持的界面语言或地区标签，例如 fr 或 fr-CA。无效值会被忽略。</summary>
+    /// <summary>获取或设置 .NET 支持的界面语言或地区标签。初始值取自宿主界面语言，不变文化的标签为空。</summary>
+    /// <remarks>空白或无效的设置会被忽略。</remarks>
     public string LanguageTag
     {
         get
@@ -60,6 +61,26 @@ public sealed partial class I18NExtension : INotifyPropertyChanged, IMultiValueC
         }
     }
 
+    /// <summary>在首次初始化时取得宿主界面语言的只读区域性，无法取得时读取中性资源。</summary>
+    private static CultureInfo GetInitialResourceCulture()
+    {
+        string languageTag = CultureInfo.CurrentUICulture.Name;
+        if (string.IsNullOrWhiteSpace(languageTag))
+        {
+            return CultureInfo.InvariantCulture;
+        }
+
+        try
+        {
+            return CultureInfo.GetCultureInfo(languageTag);
+        }
+        catch (CultureNotFoundException)
+        {
+            // 精简运行环境可能没有对应的文化数据，此时仍可使用默认 resx。
+            return CultureInfo.InvariantCulture;
+        }
+    }
+
     /// <summary>界面语言切换时通知绑定重新读取文案。</summary>
     public event PropertyChangedEventHandler? PropertyChanged
     {
@@ -89,14 +110,17 @@ public sealed partial class I18NExtension : INotifyPropertyChanged, IMultiValueC
         return GetString(resourceKey, fallback, Volatile.Read(ref _resourceCulture));
     }
 
-    /// <summary>查找当前语言的资源模板，并使用传入的参数填充占位符。</summary>
+    /// <summary>查找并格式化当前语言的资源模板，无参数或格式错误时返回原始模板。</summary>
     public static string Format(string resourceKey, params object?[]? arguments)
     {
         CultureInfo culture = Volatile.Read(ref _resourceCulture);
         string template = GetString(resourceKey, null, culture);
-        return arguments is { Length: > 0 }
-            ? string.Format(culture, template, arguments)
-            : template;
+        if (arguments is null || arguments.Length == 0)
+        {
+            return template;
+        }
+
+        return FormatTemplate(culture, template, arguments);
     }
 
     /// <summary>从指定语言读取文案，查不到资源时使用备用文案或资源键。</summary>
@@ -234,43 +258,112 @@ public sealed partial class I18NExtension : INotifyPropertyChanged, IMultiValueC
         CultureInfo culture
     )
     {
+        int valueCount = values.Count;
+        if (valueCount < 3)
+        {
+            // 语言、键和备用文案尚未齐全时，保留目标属性已经显示的值。
+            return BindingOperations.DoNothing;
+        }
+
         CultureInfo language = Volatile.Read(ref _resourceCulture);
         string text = GetString(values[1] as string, values[2] as string, language);
-        if (values.Count == 3)
+        if (valueCount == 3)
         {
             return text;
         }
 
         // 常见的一至三个参数直接使用格式化重载，避免每次绑定更新都分配参数数组。
-        if (values.Count == 4)
+        object? first = GetFormatArgument(values[3]);
+        if (valueCount == 4)
         {
-            object? argument = values[3] == AvaloniaProperty.UnsetValue ? null : values[3];
-            return string.Format(language, text, argument);
+            return FormatTemplate(language, text, first);
         }
 
-        if (values.Count == 5)
+        object? second = GetFormatArgument(values[4]);
+        if (valueCount == 5)
         {
-            object? first = values[3] == AvaloniaProperty.UnsetValue ? null : values[3];
-            object? second = values[4] == AvaloniaProperty.UnsetValue ? null : values[4];
-            return string.Format(language, text, first, second);
+            return FormatTemplate(language, text, first, second);
         }
 
-        if (values.Count == 6)
+        object? third = GetFormatArgument(values[5]);
+        if (valueCount == 6)
         {
-            object? first = values[3] == AvaloniaProperty.UnsetValue ? null : values[3];
-            object? second = values[4] == AvaloniaProperty.UnsetValue ? null : values[4];
-            object? third = values[5] == AvaloniaProperty.UnsetValue ? null : values[5];
-            return string.Format(language, text, first, second, third);
+            return FormatTemplate(language, text, first, second, third);
         }
 
-        var arguments = new object?[values.Count - 3];
-        for (int index = 0; index < arguments.Length; index++)
+        var arguments = new object?[valueCount - 3];
+        arguments[0] = first;
+        arguments[1] = second;
+        arguments[2] = third;
+        for (int index = 3; index < arguments.Length; index++)
         {
-            object? value = values[index + 3];
-            arguments[index] = value == AvaloniaProperty.UnsetValue ? null : value;
+            arguments[index] = GetFormatArgument(values[index + 3]);
         }
 
-        return string.Format(language, text, arguments);
+        return FormatTemplate(language, text, arguments);
+    }
+
+    /// <summary>将尚未绑定的格式参数转换为空值，其余参数原样传递。</summary>
+    private static object? GetFormatArgument(object? value)
+    {
+        if (value == AvaloniaProperty.UnsetValue)
+        {
+            return null;
+        }
+
+        return value;
+    }
+
+    /// <summary>使用一个参数格式化，模板无法解析时保留原文。</summary>
+    private static string FormatTemplate(CultureInfo culture, string template, object? first)
+    {
+        try
+        {
+            return string.Format(culture, template, first);
+        }
+        catch (FormatException)
+        {
+            return template;
+        }
+    }
+
+    /// <summary>使用两个参数格式化，模板无法解析时保留原文。</summary>
+    private static string FormatTemplate(CultureInfo culture, string template, object? first, object? second)
+    {
+        try
+        {
+            return string.Format(culture, template, first, second);
+        }
+        catch (FormatException)
+        {
+            return template;
+        }
+    }
+
+    /// <summary>使用三个参数格式化，模板无法解析时保留原文。</summary>
+    private static string FormatTemplate(CultureInfo culture, string template, object? first, object? second, object? third)
+    {
+        try
+        {
+            return string.Format(culture, template, first, second, third);
+        }
+        catch (FormatException)
+        {
+            return template;
+        }
+    }
+
+    /// <summary>使用已有的参数数组格式化，模板或参数格式错误时保留原文。</summary>
+    private static string FormatTemplate(CultureInfo culture, string template, object?[] arguments)
+    {
+        try
+        {
+            return string.Format(culture, template, arguments);
+        }
+        catch (FormatException)
+        {
+            return template;
+        }
     }
 
     /// <summary>保留已有绑定，将固定值包装为绑定源。</summary>
